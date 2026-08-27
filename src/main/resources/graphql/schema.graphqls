@@ -1,0 +1,38 @@
+type Query {
+    "All published events, same set returned by GET /api/events."
+    events: [Event!]!
+
+    "A single published event by id, same as GET /api/events/{id}. Null if not found or not published."
+    event(id: ID!): Event
+}
+
+type Event {
+    id: ID!
+    organizerId: ID!
+    title: String!
+    description: String
+    location: String!
+    venueName: String
+    startDate: String!
+    endDate: String!
+    status: EventStatus!
+    category: String
+    maxAttendees: Int
+    ticketTypes: [TicketType!]!
+}
+
+enum EventStatus {
+    DRAFT
+    PUBLISHED
+    CANCELLED
+    COMPLETED
+}
+
+type TicketType {
+    id: ID!
+    name: String!
+    description: String
+    price: Float!
+    quantity: Int!
+    available: Int!
+}
