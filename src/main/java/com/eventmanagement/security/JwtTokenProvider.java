@@ -8,14 +8,14 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.security.Key;
 import java.util.Date;
 
 @Component
 public class JwtTokenProvider {
 
-    private final Key signingKey;
+    private final SecretKey signingKey;
     private final long expirationMs;
 
     public JwtTokenProvider(
@@ -41,11 +41,11 @@ public class JwtTokenProvider {
     }
 
     public Long getUserIdFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(signingKey)
+        Claims claims = Jwts.parser()
+                .verifyWith(signingKey)
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
         Object userId = claims.get("userId");
         if (userId instanceof Integer) {
             return ((Integer) userId).longValue();
@@ -54,10 +54,10 @@ public class JwtTokenProvider {
     }
 
     public boolean validateToken(String token) {
-        Jwts.parserBuilder()
-                .setSigningKey(signingKey)
+        Jwts.parser()
+                .verifyWith(signingKey)
                 .build()
-                .parseClaimsJws(token);
+                .parseSignedClaims(token);
         return true;
     }
 }
