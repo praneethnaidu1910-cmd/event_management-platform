@@ -2,6 +2,7 @@ package com.eventmanagement.security;
 
 import com.eventmanagement.entity.User;
 import com.eventmanagement.repository.UserRepository;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,20 +43,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                if (tokenProvider.validateToken(token)) {
-                    Long userId = tokenProvider.getUserIdFromToken(token);
-                    User user = userRepository.findById(userId).orElse(null);
-                    if (user != null) {
-                        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
-                        UsernamePasswordAuthenticationToken authentication =
-                                new UsernamePasswordAuthenticationToken(
-                                        userDetails,
-                                        null,
-                                        userDetails.getAuthorities()
-                                );
-                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                try {
+                    if (tokenProvider.validateToken(token)) {
+                        Long userId = tokenProvider.getUserIdFromToken(token);
+                        User user = userRepository.findById(userId).orElse(null);
+                        if (user != null) {
+                            UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
+                            UsernamePasswordAuthenticationToken authentication =
+                                    new UsernamePasswordAuthenticationToken(
+                                            userDetails,
+                                            null,
+                                            userDetails.getAuthorities()
+                                    );
+                            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                            SecurityContextHolder.getContext().setAuthentication(authentication);
+                        }
                     }
+                } catch (JwtException e) {
+                    // Malformed/expired/mis-signed token: leave the request unauthenticated
+                    // instead of letting the parser exception bubble up as a 500.
                 }
             }
         }
