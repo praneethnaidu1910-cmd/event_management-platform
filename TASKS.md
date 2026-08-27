@@ -28,4 +28,18 @@ break against instead of failing silently in production.
 - Auth: register/login with JWT, roles ATTENDEE/ORGANIZER/ADMIN.
 - Events: organizer CRUD, public browse of published events.
 - Orders/Tickets: purchase flow with transactional inventory checks.
-- No tests, no CI, no frontend, no deployment yet.
+- Tests: unit coverage for JwtTokenProvider, JwtAuthenticationFilter,
+  AuthService, EventService, OrderService (19 tests, merged in PR #1).
+- No CI, no frontend, no deployment yet.
+
+## Automated sessions (9 AM / 7 PM daily)
+Unattended cloud sessions work on a shared branch per day: `daily/YYYY-MM-DD`,
+created off `main` by the morning run, continued by the evening run. They
+push that branch to origin but never touch `main` and never open a PR -
+praneethnaidu1910-cmd reviews the diff and opens the PR by hand.
+
+Each run appends an entry below before pushing, so the next run (and the
+human reviewing later) knows what happened and what's next. Newest first.
+
+### Log
+(none yet - first automated run adds its entry here)
