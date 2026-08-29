@@ -55,6 +55,25 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-08-29, evening, `daily/2026-08-29`: Added `GET /api/orders/event/{eventId}`
+  so an organizer (or admin) can see who bought tickets to their event -
+  buyer name/email plus the same ticket details already used elsewhere,
+  gated by an ownership check in `OrderService.getOrdersForEvent` (403 for
+  an organizer who doesn't own the event, 404 if the event doesn't exist).
+  Also added `GET /api/events/mine` so an organizer can list their own
+  events including drafts, since the public listing only returns published
+  ones and there was previously no way to look up an event's id after
+  creation without already having it. Both are read-only and don't touch
+  ticket inventory. Unit tests for both new service methods (ownership
+  checks, admin override, empty results). Full suite: 40/40 passing.
+  Morning session (same branch) had added `GET /api/orders/me`. Next:
+  refunds/cancellations is still the biggest open item in "Missing backend
+  features" but it mutates ticket inventory under the same
+  `SERIALIZABLE`-isolation transaction as `purchaseTickets` - whoever picks
+  it up should read that method closely and mirror its locking approach
+  (`TicketTypeRepository.findByIdForUpdate`) rather than inventing a new
+  one. Email notification on purchase is the other remaining item there
+  and is lower risk if a lower-risk pick is wanted instead.
 - 2026-08-29, morning, `daily/2026-08-29`: Added `GET /api/orders/me` so an
   attendee can list their own past orders (reuses the existing
   `OrderRepository.findByUserId`, sorted newest first). Extracted the
