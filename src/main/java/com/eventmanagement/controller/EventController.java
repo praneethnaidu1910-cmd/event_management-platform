@@ -48,6 +48,13 @@ public class EventController {
         return ResponseEntity.ok(eventService.getAllEvents());
     }
 
+    @GetMapping("/mine")
+    @PreAuthorize("hasRole('ORGANIZER')")
+    public ResponseEntity<List<EventResponse>> listMyEvents() {
+        User organizer = currentUserService.getCurrentUser();
+        return ResponseEntity.ok(eventService.getEventsForOrganizer(organizer));
+    }
+
     @GetMapping("/search")
     public ResponseEntity<List<EventResponse>> searchEvents(
             @RequestParam(required = false) String keyword,

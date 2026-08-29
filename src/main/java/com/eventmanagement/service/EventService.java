@@ -65,6 +65,12 @@ public class EventService {
                 .collect(Collectors.toList());
     }
 
+    public List<EventResponse> getEventsForOrganizer(User organizer) {
+        return eventRepository.findByOrganizerId(organizer.getId()).stream()
+                .map(this::toEventResponse)
+                .collect(Collectors.toList());
+    }
+
     public List<EventResponse> searchEvents(String keyword, String category, String location,
                                              LocalDateTime startFrom, LocalDateTime startTo) {
         return eventRepository.search(
