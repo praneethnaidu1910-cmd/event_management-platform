@@ -164,6 +164,40 @@ class EventServiceTest {
     }
 
     @Test
+    void getEventsForOrganizer_returnsAllStatusesOwnedByThatOrganizer() {
+        Event draft = Event.builder()
+                .id(7L)
+                .organizer(organizer(1L))
+                .title("Draft Event")
+                .location("City Park")
+                .status(Event.EventStatus.DRAFT)
+                .ticketTypes(List.of())
+                .build();
+        Event published = Event.builder()
+                .id(8L)
+                .organizer(organizer(1L))
+                .title("Published Event")
+                .location("City Park")
+                .status(Event.EventStatus.PUBLISHED)
+                .ticketTypes(List.of())
+                .build();
+        when(eventRepository.findByOrganizerId(1L)).thenReturn(List.of(draft, published));
+
+        List<EventResponse> responses = eventService.getEventsForOrganizer(organizer(1L));
+
+        assertThat(responses).hasSize(2);
+        assertThat(responses).extracting(EventResponse::getStatus)
+                .containsExactlyInAnyOrder(Event.EventStatus.DRAFT, Event.EventStatus.PUBLISHED);
+    }
+
+    @Test
+    void getEventsForOrganizer_returnsEmptyListWhenOrganizerHasNoEvents() {
+        when(eventRepository.findByOrganizerId(1L)).thenReturn(List.of());
+
+        assertThat(eventService.getEventsForOrganizer(organizer(1L))).isEmpty();
+    }
+
+    @Test
     void searchEvents_delegatesToRepositoryWithPublishedStatus() {
         when(eventRepository.search(eq(Event.EventStatus.PUBLISHED), eq("jazz"), eq("Music"), isNull(), isNull(), isNull()))
                 .thenReturn(List.of());
