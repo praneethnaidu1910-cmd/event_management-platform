@@ -55,4 +55,14 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-08-29, morning, `daily/2026-08-29`: Added `GET /api/orders/me` so an
+  attendee can list their own past orders (reuses the existing
+  `OrderRepository.findByUserId`, sorted newest first). Extracted the
+  `Order -> OrderResponse` mapping used by the purchase endpoint into a
+  shared helper and extended `OrderResponse` with event id/title, payment
+  status, and created date. Added unit tests for the new
+  `OrderService.getOrdersForUser` (ordering, field mapping, empty list).
+  Full suite: 34/34 passing. Next: pick up refunds/cancellations or admin
+  endpoints from the "Missing backend features" item - refunds touch
+  ticket inventory, so take care with the transactional/concurrency logic
+  the same way `purchaseTickets` does.
