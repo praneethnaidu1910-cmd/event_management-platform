@@ -19,6 +19,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -159,5 +161,25 @@ class EventServiceTest {
         eventService.deleteEvent(7L, organizer(1L));
 
         verify(eventRepository).delete(event);
+    }
+
+    @Test
+    void searchEvents_delegatesToRepositoryWithPublishedStatus() {
+        when(eventRepository.search(eq(Event.EventStatus.PUBLISHED), eq("jazz"), eq("Music"), isNull(), isNull(), isNull()))
+                .thenReturn(List.of());
+
+        eventService.searchEvents("jazz", "Music", null, null, null);
+
+        verify(eventRepository).search(Event.EventStatus.PUBLISHED, "jazz", "Music", null, null, null);
+    }
+
+    @Test
+    void searchEvents_normalizesBlankFiltersToNull() {
+        when(eventRepository.search(eq(Event.EventStatus.PUBLISHED), isNull(), isNull(), isNull(), isNull(), isNull()))
+                .thenReturn(List.of());
+
+        eventService.searchEvents("   ", "", null, null, null);
+
+        verify(eventRepository).search(Event.EventStatus.PUBLISHED, null, null, null, null, null);
     }
 }

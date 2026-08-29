@@ -6,6 +6,7 @@ import com.eventmanagement.entity.User;
 import com.eventmanagement.service.CurrentUserService;
 import com.eventmanagement.service.EventService;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,8 +17,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -43,6 +46,17 @@ public class EventController {
     @GetMapping
     public ResponseEntity<List<EventResponse>> listEvents() {
         return ResponseEntity.ok(eventService.getAllEvents());
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<EventResponse>> searchEvents(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTo
+    ) {
+        return ResponseEntity.ok(eventService.searchEvents(keyword, category, location, startFrom, startTo));
     }
 
     @GetMapping("/{id}")

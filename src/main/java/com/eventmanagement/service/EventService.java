@@ -11,6 +11,7 @@ import com.eventmanagement.exception.AccessDeniedException;
 import com.eventmanagement.exception.ResourceNotFoundException;
 import com.eventmanagement.repository.EventRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -62,6 +63,24 @@ public class EventService {
         return eventRepository.findByStatus(Event.EventStatus.PUBLISHED).stream()
                 .map(this::toEventResponse)
                 .collect(Collectors.toList());
+    }
+
+    public List<EventResponse> searchEvents(String keyword, String category, String location,
+                                             LocalDateTime startFrom, LocalDateTime startTo) {
+        return eventRepository.search(
+                        Event.EventStatus.PUBLISHED,
+                        normalize(keyword),
+                        normalize(category),
+                        normalize(location),
+                        startFrom,
+                        startTo
+                ).stream()
+                .map(this::toEventResponse)
+                .collect(Collectors.toList());
+    }
+
+    private String normalize(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 
     public EventResponse getEventById(Long id) {
