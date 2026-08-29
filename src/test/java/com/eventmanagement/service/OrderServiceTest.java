@@ -4,6 +4,7 @@ import com.eventmanagement.dto.request.PurchaseRequest;
 import com.eventmanagement.dto.response.OrderResponse;
 import com.eventmanagement.entity.Event;
 import com.eventmanagement.entity.Order;
+import com.eventmanagement.entity.Ticket;
 import com.eventmanagement.entity.TicketType;
 import com.eventmanagement.entity.User;
 import com.eventmanagement.exception.InsufficientTicketsException;
@@ -14,6 +15,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -96,5 +99,59 @@ class OrderServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void getOrdersForUser_returnsOrdersNewestFirstWithEventAndTicketDetails() {
+        User buyer = User.builder().id(5L).email("buyer@example.com").role(User.Role.ATTENDEE).build();
+        Event event = Event.builder().id(10L).title("Tech Conference").build();
+
+        Order older = Order.builder()
+                .id(1L)
+                .user(buyer)
+                .event(event)
+                .totalAmount(new BigDecimal("25.00"))
+                .paymentStatus("COMPLETED")
+                .createdAt(LocalDateTime.of(2026, 8, 1, 10, 0))
+                .tickets(new java.util.ArrayList<>())
+                .build();
+        older.getTickets().add(Ticket.builder()
+                .id(100L)
+                .order(older)
+                .ticketType(TicketType.builder().id(1L).build())
+                .ticketCode("code-1")
+                .status("ACTIVE")
+                .build());
+
+        Order newer = Order.builder()
+                .id(2L)
+                .user(buyer)
+                .event(event)
+                .totalAmount(new BigDecimal("50.00"))
+                .paymentStatus("COMPLETED")
+                .createdAt(LocalDateTime.of(2026, 8, 15, 10, 0))
+                .tickets(new java.util.ArrayList<>())
+                .build();
+
+        when(orderRepository.findByUserId(5L)).thenReturn(List.of(older, newer));
+
+        List<OrderResponse> responses = orderService.getOrdersForUser(buyer);
+
+        assertThat(responses).hasSize(2);
+        assertThat(responses.get(0).getOrderId()).isEqualTo(2L);
+        assertThat(responses.get(1).getOrderId()).isEqualTo(1L);
+        assertThat(responses.get(1).getEventId()).isEqualTo(10L);
+        assertThat(responses.get(1).getEventTitle()).isEqualTo("Tech Conference");
+        assertThat(responses.get(1).getPaymentStatus()).isEqualTo("COMPLETED");
+        assertThat(responses.get(1).getTickets()).hasSize(1);
+        assertThat(responses.get(1).getTickets().get(0).getTicketCode()).isEqualTo("code-1");
+    }
+
+    @Test
+    void getOrdersForUser_returnsEmptyListWhenUserHasNoOrders() {
+        User buyer = User.builder().id(5L).email("buyer@example.com").role(User.Role.ATTENDEE).build();
+        when(orderRepository.findByUserId(5L)).thenReturn(List.of());
+
+        assertThat(orderService.getOrdersForUser(buyer)).isEmpty();
     }
 }
