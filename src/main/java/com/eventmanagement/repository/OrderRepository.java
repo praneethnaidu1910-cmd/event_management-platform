@@ -12,6 +12,7 @@ import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByUserId(Long userId);
+    List<Order> findByEventId(Long eventId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from Order o where o.id = :id")

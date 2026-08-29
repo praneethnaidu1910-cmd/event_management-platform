@@ -1,6 +1,7 @@
 package com.eventmanagement.service;
 
 import com.eventmanagement.dto.request.PurchaseRequest;
+import com.eventmanagement.dto.response.EventOrderResponse;
 import com.eventmanagement.dto.response.OrderResponse;
 import com.eventmanagement.entity.Event;
 import com.eventmanagement.entity.Order;
@@ -11,6 +12,7 @@ import com.eventmanagement.exception.AccessDeniedException;
 import com.eventmanagement.exception.BadRequestException;
 import com.eventmanagement.exception.InsufficientTicketsException;
 import com.eventmanagement.exception.ResourceNotFoundException;
+import com.eventmanagement.repository.EventRepository;
 import com.eventmanagement.repository.OrderRepository;
 import com.eventmanagement.repository.TicketTypeRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,13 +35,15 @@ class OrderServiceTest {
 
     private OrderRepository orderRepository;
     private TicketTypeRepository ticketTypeRepository;
+    private EventRepository eventRepository;
     private OrderService orderService;
 
     @BeforeEach
     void setUp() {
         orderRepository = mock(OrderRepository.class);
         ticketTypeRepository = mock(TicketTypeRepository.class);
-        orderService = new OrderService(orderRepository, ticketTypeRepository);
+        eventRepository = mock(EventRepository.class);
+        orderService = new OrderService(orderRepository, ticketTypeRepository, eventRepository);
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
@@ -107,9 +111,10 @@ class OrderServiceTest {
         Order order = new Order();
         order.setId(100L);
         order.setUser(buyer);
-        order.setEvent(Event.builder().id(10L).startDate(eventStartDate).build());
+        order.setEvent(Event.builder().id(10L).title("Music Festival").startDate(eventStartDate).build());
         order.setTotalAmount(ticketType.getPrice().multiply(BigDecimal.valueOf(ticketCount)));
         order.setPaymentStatus("COMPLETED");
+        order.setCreatedAt(LocalDateTime.now());
         List<Ticket> tickets = new java.util.ArrayList<>();
         for (int i = 0; i < ticketCount; i++) {
             tickets.add(Ticket.builder().id((long) i).order(order).ticketType(ticketType).status("ACTIVE").build());
@@ -195,5 +200,53 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> orderService.cancelOrder(404L, buyer))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void getOrdersForUser_returnsNewestFirstWithEventDetails() {
+        User buyer = User.builder().id(5L).email("buyer@example.com").role(User.Role.ATTENDEE).build();
+        TicketType ticketType = ticketType(7, "25.00");
+        Order older = activeOrder(buyer, ticketType, 1, LocalDateTime.now().plusDays(10));
+        older.setId(1L);
+        older.setCreatedAt(LocalDateTime.now().minusDays(1));
+        Order newer = activeOrder(buyer, ticketType, 1, LocalDateTime.now().plusDays(10));
+        newer.setId(2L);
+        newer.setCreatedAt(LocalDateTime.now());
+        when(orderRepository.findByUserId(5L)).thenReturn(List.of(older, newer));
+
+        List<OrderResponse> responses = orderService.getOrdersForUser(buyer);
+
+        assertThat(responses).extracting(OrderResponse::getOrderId).containsExactly(2L, 1L);
+        assertThat(responses.get(0).getEventTitle()).isEqualTo("Music Festival");
+    }
+
+    @Test
+    void getOrdersForEvent_allowsOwningOrganizerAndReturnsBuyerDetails() {
+        User organizer = User.builder().id(1L).email("organizer@example.com").role(User.Role.ORGANIZER).build();
+        User buyer = User.builder().id(5L).email("buyer@example.com").firstName("Ada").lastName("Lovelace").role(User.Role.ATTENDEE).build();
+        Event event = Event.builder().id(10L).organizer(organizer).title("Music Festival").build();
+        when(eventRepository.findById(10L)).thenReturn(Optional.of(event));
+
+        TicketType ticketType = ticketType(7, "25.00");
+        Order order = activeOrder(buyer, ticketType, 2, LocalDateTime.now().plusDays(10));
+        when(orderRepository.findByEventId(10L)).thenReturn(List.of(order));
+
+        List<EventOrderResponse> responses = orderService.getOrdersForEvent(10L, organizer);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).getBuyerName()).isEqualTo("Ada Lovelace");
+        assertThat(responses.get(0).getBuyerEmail()).isEqualTo("buyer@example.com");
+        assertThat(responses.get(0).getTickets()).hasSize(2);
+    }
+
+    @Test
+    void getOrdersForEvent_rejectsRequesterWhoIsNeitherOrganizerNorAdmin() {
+        User organizer = User.builder().id(1L).email("organizer@example.com").role(User.Role.ORGANIZER).build();
+        User stranger = User.builder().id(2L).email("stranger@example.com").role(User.Role.ORGANIZER).build();
+        Event event = Event.builder().id(10L).organizer(organizer).title("Music Festival").build();
+        when(eventRepository.findById(10L)).thenReturn(Optional.of(event));
+
+        assertThatThrownBy(() -> orderService.getOrdersForEvent(10L, stranger))
+                .isInstanceOf(AccessDeniedException.class);
     }
 }
