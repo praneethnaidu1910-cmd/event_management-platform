@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -61,7 +62,18 @@ public class OrderService {
 
         Order saved = orderRepository.save(order);
 
-        List<TicketResponse> tickets = saved.getTickets().stream()
+        return toOrderResponse(saved);
+    }
+
+    public List<OrderResponse> getOrdersForUser(User user) {
+        return orderRepository.findByUserId(user.getId()).stream()
+                .sorted(Comparator.comparing(Order::getCreatedAt).reversed())
+                .map(this::toOrderResponse)
+                .collect(Collectors.toList());
+    }
+
+    private OrderResponse toOrderResponse(Order order) {
+        List<TicketResponse> tickets = order.getTickets().stream()
                 .map(ticket -> TicketResponse.builder()
                         .id(ticket.getId())
                         .ticketCode(ticket.getTicketCode())
@@ -71,8 +83,12 @@ public class OrderService {
                 .collect(Collectors.toList());
 
         return OrderResponse.builder()
-                .orderId(saved.getId())
-                .totalAmount(saved.getTotalAmount())
+                .orderId(order.getId())
+                .eventId(order.getEvent().getId())
+                .eventTitle(order.getEvent().getTitle())
+                .totalAmount(order.getTotalAmount())
+                .paymentStatus(order.getPaymentStatus())
+                .createdAt(order.getCreatedAt())
                 .tickets(tickets)
                 .build();
     }
