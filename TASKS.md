@@ -55,4 +55,17 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-08-30, morning, `daily/2026-08-30`: Added order cancellation
+  (`POST /api/orders/{id}/cancel`). Attendees can cancel their own order;
+  it restores the cancelled tickets' quantity to the ticket type's
+  available count, marks the order and tickets CANCELLED, and rejects
+  a second cancel or a non-owner's request. Locking mirrors the purchase
+  flow (pessimistic lock + SERIALIZABLE) so it can't race with a purchase
+  or double-credit availability on a repeated cancel. Added OrderResponse
+  status field and 4 new OrderService tests (7 total, all passing;
+  full suite 36/36). Next: refunds are still just a status flip with no
+  payment integration to reverse - the roadmap item "refunds" probably
+  means adding a real refund/payment-provider hook here, or if that's out
+  of scope for this project, admin endpoints (e.g. listing all orders,
+  viewing platform stats) or email notification on purchase are the next
+  lower-risk pieces from the roadmap.
