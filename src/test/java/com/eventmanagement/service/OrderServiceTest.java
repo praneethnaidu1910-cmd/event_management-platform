@@ -4,8 +4,11 @@ import com.eventmanagement.dto.request.PurchaseRequest;
 import com.eventmanagement.dto.response.OrderResponse;
 import com.eventmanagement.entity.Event;
 import com.eventmanagement.entity.Order;
+import com.eventmanagement.entity.Ticket;
 import com.eventmanagement.entity.TicketType;
 import com.eventmanagement.entity.User;
+import com.eventmanagement.exception.AccessDeniedException;
+import com.eventmanagement.exception.BadRequestException;
 import com.eventmanagement.exception.InsufficientTicketsException;
 import com.eventmanagement.exception.ResourceNotFoundException;
 import com.eventmanagement.repository.OrderRepository;
@@ -14,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -96,5 +100,84 @@ class OrderServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(orderRepository, never()).save(any());
+    }
+
+    private Order orderWithActiveTickets(User owner, TicketType ticketType, int ticketCount, String paymentStatus) {
+        Order order = Order.builder()
+                .id(7L)
+                .user(owner)
+                .event(ticketType.getEvent())
+                .totalAmount(ticketType.getPrice().multiply(BigDecimal.valueOf(ticketCount)))
+                .paymentStatus(paymentStatus)
+                .build();
+
+        List<Ticket> tickets = new java.util.ArrayList<>();
+        for (int i = 0; i < ticketCount; i++) {
+            tickets.add(Ticket.builder()
+                    .id((long) (100 + i))
+                    .order(order)
+                    .ticketType(ticketType)
+                    .ticketCode("code-" + i)
+                    .status("ACTIVE")
+                    .build());
+        }
+        order.setTickets(tickets);
+        return order;
+    }
+
+    @Test
+    void cancelOrder_restoresAvailabilityAndMarksTicketsCancelled() {
+        TicketType ticketType = ticketType(5, "25.00");
+        User owner = User.builder().id(5L).email("buyer@example.com").role(User.Role.ATTENDEE).build();
+        Order order = orderWithActiveTickets(owner, ticketType, 3, "COMPLETED");
+
+        when(orderRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(order));
+        when(ticketTypeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(ticketType));
+
+        OrderResponse response = orderService.cancelOrder(7L, owner);
+
+        assertThat(ticketType.getAvailable()).isEqualTo(8);
+        assertThat(response.getStatus()).isEqualTo("CANCELLED");
+        assertThat(response.getTickets()).allSatisfy(ticket -> assertThat(ticket.getStatus()).isEqualTo("CANCELLED"));
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void cancelOrder_rejectsCancellingSomeoneElsesOrder() {
+        TicketType ticketType = ticketType(5, "25.00");
+        User owner = User.builder().id(5L).email("buyer@example.com").role(User.Role.ATTENDEE).build();
+        User stranger = User.builder().id(9L).email("stranger@example.com").role(User.Role.ATTENDEE).build();
+        Order order = orderWithActiveTickets(owner, ticketType, 2, "COMPLETED");
+
+        when(orderRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.cancelOrder(7L, stranger))
+                .isInstanceOf(AccessDeniedException.class);
+
+        assertThat(ticketType.getAvailable()).isEqualTo(5);
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void cancelOrder_rejectsAlreadyCancelledOrder() {
+        TicketType ticketType = ticketType(5, "25.00");
+        User owner = User.builder().id(5L).email("buyer@example.com").role(User.Role.ATTENDEE).build();
+        Order order = orderWithActiveTickets(owner, ticketType, 2, "CANCELLED");
+
+        when(orderRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.cancelOrder(7L, owner))
+                .isInstanceOf(BadRequestException.class);
+
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void cancelOrder_throwsWhenOrderDoesNotExist() {
+        User owner = User.builder().id(5L).email("buyer@example.com").role(User.Role.ATTENDEE).build();
+        when(orderRepository.findByIdForUpdate(404L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> orderService.cancelOrder(404L, owner))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 }
