@@ -55,6 +55,26 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-08-30, evening, `daily/2026-08-30`: Continued from this morning's
+  order cancellation work. Added two admin-only endpoints:
+  `GET /api/admin/orders` (every order platform-wide, with buyer email
+  and event title attached so an admin doesn't need a second lookup)
+  and `GET /api/admin/stats` (user/event/order counts, published event
+  count, active tickets sold, total revenue excluding cancelled
+  orders). Both gated with `@PreAuthorize("hasRole('ADMIN')")`; no
+  changes to SecurityConfig itself since `anyRequest().authenticated()`
+  already covers the new paths and method security was already
+  enabled. Added `OrderRepository.sumRevenue()` (custom JPQL, covered
+  by a real H2-backed test - same reasoning as the event search query)
+  and `countByStatus()` on EventRepository/TicketRepository (derived
+  queries). Added AdminServiceTest (2 tests) and
+  OrderRepositoryStatsTest (2 tests); full suite 44/44 passing. Next:
+  refunds still need a real decision (payment-provider hook vs.
+  treating the existing cancel-as-refund as sufficient for this
+  project's scope) - that's a call for the human. Lower-risk options
+  if refunds stay parked: email notification on purchase, or starting
+  the Dockerize/CI step from roadmap item 3 now that there's a real
+  test suite to run in CI.
 - 2026-08-30, morning, `daily/2026-08-30`: Added order cancellation
   (`POST /api/orders/{id}/cancel`). Attendees can cancel their own order;
   it restores the cancelled tickets' quantity to the ticket type's
