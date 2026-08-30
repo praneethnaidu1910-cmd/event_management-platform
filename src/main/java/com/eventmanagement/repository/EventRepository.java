@@ -11,6 +11,7 @@ import java.util.List;
 public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> findByOrganizerId(Long organizerId);
     List<Event> findByStatus(Event.EventStatus status);
+    long countByStatus(Event.EventStatus status);
 
     @Query("SELECT e FROM Event e WHERE e.status = :status "
             + "AND (:keyword IS NULL OR LOWER(e.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(e.description) LIKE LOWER(CONCAT('%', :keyword, '%'))) "
