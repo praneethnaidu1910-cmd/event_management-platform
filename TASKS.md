@@ -55,4 +55,15 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-08-31, morning, `daily/2026-08-31`: Added unit tests for
+  `CurrentUserService` and `UserDetailsServiceImpl`, the two auth-support
+  services that had no coverage yet (everything else in that path -
+  `JwtTokenProvider`, `JwtAuthenticationFilter`, `AuthService` - already
+  had tests). No production code changed. 10 new tests, full suite green
+  (38 tests, `./mvnw test`). Next session: controller-layer tests
+  (`EventController`, `OrderController`, `AuthController` via
+  `@WebMvcTest`/MockMvc) are still missing and would need
+  `spring-security-test` added as a test dependency to exercise the
+  `@PreAuthorize` role checks properly - worth doing deliberately rather
+  than rushed. After that, step 1 (tests) is essentially done and step 2
+  (refunds/cancellations, admin endpoints, email on purchase) can start.
