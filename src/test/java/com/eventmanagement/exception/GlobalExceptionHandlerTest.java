@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -55,6 +58,30 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(bodyMessage(response)).isEqualTo("Bad credentials");
+    }
+
+    @Test
+    void handlesSpringSecurityAccessDenied() {
+        ResponseEntity<?> response = handler.handleSpringSecurityAccessDenied(
+                new org.springframework.security.access.AccessDeniedException("Access is denied"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(bodyMessage(response)).isEqualTo("Access denied");
+    }
+
+    @Test
+    void handlesValidationFailure() throws NoSuchMethodException {
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "purchaseRequest");
+        bindingResult.addError(new FieldError("purchaseRequest", "quantity", "must not be null"));
+        MethodArgumentNotValidException ex = new MethodArgumentNotValidException(
+                new org.springframework.core.MethodParameter(
+                        GlobalExceptionHandlerTest.class.getDeclaredMethod("handlesValidationFailure"), -1),
+                bindingResult);
+
+        ResponseEntity<?> response = handler.handleValidation(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(bodyMessage(response)).isEqualTo("quantity: must not be null");
     }
 
     @Test
