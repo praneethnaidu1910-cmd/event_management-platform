@@ -55,6 +55,32 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-08-31, evening, `daily/2026-08-31`: Picked up where the morning
+  session left off - controller-layer tests. Added `@WebMvcTest`/MockMvc
+  coverage for `AuthController`, `EventController`, and `OrderController`,
+  importing the real `SecurityConfig` and using `spring-security-test`'s
+  `@WithMockUser` so `@PreAuthorize` role checks (organizer-only event
+  create/update/delete, attendee-only purchase) are actually exercised
+  instead of mocked away. Along the way found and fixed a real bug: a
+  wrong-role request (an authenticated ATTENDEE hitting an ORGANIZER-only
+  endpoint) and a failed `@Valid` request were both falling through
+  `GlobalExceptionHandler`'s catch-all and coming back as 500 "Unexpected
+  error" instead of 403/400 - the handler only matched the app's own
+  `AccessDeniedException`, not Spring Security's class of the same simple
+  name, and had no handler for `MethodArgumentNotValidException` at all.
+  Added explicit handlers for both, plus unit tests for them. Full suite
+  green (56 tests, `./mvnw test`), 3 commits: the exception-handler fix,
+  the new controller tests + `spring-security-test` dependency, and this
+  log entry. Combined with this morning: auth-support services
+  (`CurrentUserService`, `UserDetailsServiceImpl`) and now all three
+  controllers have real coverage, so step 1 (tests) is essentially done -
+  the transactional purchase flow, event CRUD, and auth are all tested at
+  both the service and controller layer. Next session: start step 2
+  (missing backend features) - refunds/cancellations is the natural first
+  pick since it's adjacent to the order/ticket code that's already
+  well-tested; email notification on purchase needs a decision on what
+  mail provider/config to use, so probably leave that for a session with
+  more room to make that call deliberately.
 - 2026-08-31, morning, `daily/2026-08-31`: Added unit tests for
   `CurrentUserService` and `UserDetailsServiceImpl`, the two auth-support
   services that had no coverage yet (everything else in that path -
