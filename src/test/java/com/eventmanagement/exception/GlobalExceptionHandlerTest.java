@@ -2,9 +2,13 @@ package com.eventmanagement.exception;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -15,6 +19,24 @@ class GlobalExceptionHandlerTest {
     @BeforeEach
     void setUp() {
         handler = new GlobalExceptionHandler();
+    }
+
+    @Test
+    void handlesValidationErrors() throws NoSuchMethodException {
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "registerRequest");
+        bindingResult.addError(new FieldError("registerRequest", "email", "must be a well-formed email address"));
+        MethodParameter methodParameter = new MethodParameter(
+                getClass().getDeclaredMethod("dummyTarget", String.class), 0);
+
+        ResponseEntity<?> response = handler.handleValidation(
+                new MethodArgumentNotValidException(methodParameter, bindingResult));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(bodyMessage(response)).isEqualTo("email must be a well-formed email address");
+    }
+
+    @SuppressWarnings("unused")
+    private void dummyTarget(String value) {
     }
 
     @Test
