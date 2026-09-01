@@ -42,6 +42,17 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
+    // Thrown by @PreAuthorize when an authenticated user lacks the required role.
+    // Distinct from our own AccessDeniedException above (same simple name, different
+    // package) - without this handler it fell through to handleGeneric() and returned
+    // 500 instead of 403, since @PreAuthorize failures surface during handler method
+    // invocation and are resolved here before the security filter chain gets a chance.
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAuthorizationDenied(
+            org.springframework.security.access.AccessDeniedException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Access denied");
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex) {
         return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
