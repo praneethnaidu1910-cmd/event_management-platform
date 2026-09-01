@@ -55,6 +55,32 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-01, evening, `daily/2026-09-01`: Continued roadmap item 1 with
+  MockMvc controller tests for EventController and OrderController
+  (create/read/delete role checks, purchase success/insufficient-tickets/
+  validation). Testing OrderController's ATTENDEE-only @PreAuthorize check
+  surfaced a real bug: GlobalExceptionHandler only handled our own
+  AccessDeniedException, not Spring Security's - since @PreAuthorize
+  failures are thrown during handler invocation and get resolved by
+  @RestControllerAdvice before the security filter chain sees them, a
+  role mismatch on any @PreAuthorize-protected endpoint (POST /api/events,
+  POST /api/orders/purchase, etc.) was returning 500 instead of 403. Fixed
+  with a dedicated handler and a unit test. Also found @WebMvcTest doesn't
+  load the app's SecurityConfig by default, so @PreAuthorize was silently
+  not enforced in the slice until each test class added a small
+  @EnableMethodSecurity test config; added spring-security-test as a test
+  dependency to get @WithMockUser. Full suite green (49 tests, up from 38).
+  Both sessions today covered roadmap item 1: auth controller tests this
+  morning, event/order controller tests and the PreAuthorize bug fix this
+  evening - AuthController, EventController, and OrderController all now
+  have controller-level coverage alongside the existing service-level
+  tests. Tomorrow's morning session should either close out item 1 with
+  tests for CurrentUserService and JwtTokenProvider edge cases (expired/
+  malformed tokens) if any gaps remain, or move on to roadmap item 2
+  (refunds/cancellations, admin endpoints, email notification on
+  purchase) - refunds/cancellations touches the same transactional
+  ticket-inventory code as purchase, so treat it with the same care as
+  auth code and write tests alongside the implementation, not after.
 - 2026-09-01, morning, `daily/2026-09-01`: Added MockMvc controller tests for
   AuthController (register/login - success, duplicate email, invalid input).
   Writing them surfaced a real bug: `@Valid` failures on request bodies had
