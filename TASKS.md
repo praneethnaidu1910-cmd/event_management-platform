@@ -55,4 +55,15 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-01, morning, `daily/2026-09-01`: Added MockMvc controller tests for
+  AuthController (register/login - success, duplicate email, invalid input).
+  Writing them surfaced a real bug: `@Valid` failures on request bodies had
+  no dedicated exception handler and fell through to the generic 500
+  handler instead of returning 400, so fixed that in GlobalExceptionHandler
+  and added a unit test for it. Full suite green (38 tests). Next session
+  should keep going on roadmap item 1: EventController and OrderController
+  have no controller-level tests yet (only service-level), and
+  OrderController's purchase endpoint is the highest-value target given the
+  overselling risk in that flow - though it needs an authenticated
+  principal in the MockMvc setup, unlike AuthController's permitAll
+  endpoints, so a bit more test scaffolding.
