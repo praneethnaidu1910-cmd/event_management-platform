@@ -55,4 +55,35 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-02, morning, `daily/2026-09-02`: Note first - branches
+  `daily/2026-08-29` through `daily/2026-09-01` are pushed to origin but
+  none have been opened as PRs or merged into `main` yet, so `main` is
+  still at the state from PR #2 (GraphQL query layer) and this log was
+  empty on `main` even though those branches' own copies of this file
+  have entries. Per the daily-branch instructions this run created
+  `daily/2026-09-02` fresh off `main` rather than off `daily/2026-09-01`,
+  so it doesn't have that branch's controller-test/PreAuthorize-bugfix
+  work - that's all still waiting in its own unmerged branch. Worth
+  reviewing/merging the backlog of daily branches soon so future runs
+  build on top of each other instead of on `main` as of PR #2.
+  This session continued roadmap item 1 with tests that had no coverage
+  on `main`: CurrentUserService.getCurrentUser() (authenticated lookup,
+  no Authentication in the context, an unauthenticated Authentication,
+  and an authenticated principal with no matching user row - the last
+  three all throw and had nothing pinning that), and two expired-token
+  cases for JwtTokenProvider (validateToken and getUserIdFromToken both
+  surface ExpiredJwtException) that were called out as a gap in an
+  earlier note but hadn't been added yet. Also fixed a stale comment on
+  JwtTokenProviderTest's malformed-token test claiming a bad
+  Authorization header 500s the request - JwtAuthenticationFilter already
+  catches that (JwtAuthenticationFilterTest covers it), so the comment
+  was just wrong. Full suite green (38 tests). Next session: either close
+  out roadmap item 1 on `main` by porting/redoing the AuthController/
+  EventController/OrderController MockMvc tests and the @PreAuthorize
+  AccessDeniedException fix that already exist on `daily/2026-09-01` (once
+  someone confirms that branch isn't about to be merged, to avoid
+  duplicate work), or start roadmap item 2 (refunds/cancellations, admin
+  endpoints, email notification on purchase) - if picking refunds/
+  cancellations, treat it like auth code given it touches the same
+  transactional ticket-inventory logic as purchase, and write tests
+  alongside the implementation.
