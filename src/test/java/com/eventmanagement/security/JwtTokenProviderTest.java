@@ -1,6 +1,7 @@
 package com.eventmanagement.security;
 
 import com.eventmanagement.entity.User;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,11 +45,11 @@ class JwtTokenProviderTest {
 
     @Test
     void validateToken_throwsForMalformedToken() {
-        // Documents current behavior: validateToken does not catch parser
-        // exceptions, so a bad token propagates instead of returning false.
-        // JwtAuthenticationFilter calls this unguarded, so a malformed
-        // Authorization header currently 500s the request instead of just
-        // being treated as unauthenticated.
+        // validateToken does not catch parser exceptions itself; it relies on
+        // the caller to handle them. JwtAuthenticationFilter does exactly
+        // that (catches JwtException around this call), so this propagates
+        // as an unauthenticated request rather than a 500 - see
+        // JwtAuthenticationFilterTest for that behavior.
         assertThrows(JwtException.class, () -> tokenProvider.validateToken("not-a-real-token"));
     }
 
@@ -58,5 +59,21 @@ class JwtTokenProviderTest {
         String token = otherProvider.generateToken(sampleUser());
 
         assertThrows(JwtException.class, () -> tokenProvider.validateToken(token));
+    }
+
+    @Test
+    void validateToken_throwsExpiredJwtExceptionForExpiredToken() {
+        JwtTokenProvider shortLivedProvider = new JwtTokenProvider(SECRET, -1_000);
+        String token = shortLivedProvider.generateToken(sampleUser());
+
+        assertThrows(ExpiredJwtException.class, () -> tokenProvider.validateToken(token));
+    }
+
+    @Test
+    void getUserIdFromToken_throwsExpiredJwtExceptionForExpiredToken() {
+        JwtTokenProvider shortLivedProvider = new JwtTokenProvider(SECRET, -1_000);
+        String token = shortLivedProvider.generateToken(sampleUser());
+
+        assertThrows(ExpiredJwtException.class, () -> tokenProvider.getUserIdFromToken(token));
     }
 }
