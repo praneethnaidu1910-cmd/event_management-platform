@@ -55,6 +55,39 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-02, evening, `daily/2026-09-02`: Continued on top of this
+  morning's session (CurrentUserService and JwtTokenProvider expired-token
+  tests). Given the choice the morning entry left open - port the
+  controller/PreAuthorize work sitting on `daily/2026-09-01` or start
+  roadmap item 2 - went with item 2, since none of the daily branches have
+  been merged yet and duplicating that controller-test work risked
+  conflicting with `daily/2026-09-01` once it does get reviewed. Also
+  treated this as ticket-inventory-adjacent (it mutates the same
+  `TicketType.available` counter as purchase) rather than as the
+  lower-risk pick, so it got the same pessimistic-locking/SERIALIZABLE
+  treatment as the purchase path and thorough tests, not a shortcut.
+  Implemented order cancellation/refund: `POST /api/orders/{id}/cancel`
+  for the ATTENDEE who placed the order. It locks the order row and each
+  affected ticket type (`OrderRepository.findByIdForUpdate`, reusing the
+  existing `TicketTypeRepository.findByIdForUpdate` pattern), marks every
+  ticket on the order CANCELLED, sets the order's paymentStatus to
+  REFUNDED, and adds the cancelled quantity back to each ticket type's
+  available count. Guards: only the buyer can cancel their own order
+  (403), an already-refunded order can't be cancelled again (400), and
+  cancellation is blocked once the event's start date has passed (400).
+  `OrderResponse` now includes `paymentStatus` so purchase and cancel
+  responses both show COMPLETED/REFUNDED without a second lookup. Five
+  new OrderServiceTest cases cover the happy path plus each guard rail
+  (wrong owner, already cancelled, event already started, order not
+  found). Full suite green (43 tests, up from 38). Did not touch
+  admin endpoints or email notifications from item 2 - those are still
+  open. Next session: pick up either the remaining roadmap item 2 work
+  (admin endpoints, email notification on purchase - the latter needs a
+  decision on what mail sending mechanism to use, e.g. Spring Mail vs. a
+  stub/log-only sender for a portfolio project without a real SMTP
+  provider) or revisit the `daily/2026-08-29` through `daily/2026-09-01`
+  backlog once a human has had a chance to review/merge some of them, so
+  future runs stop branching off the same stale `main`.
 - 2026-09-02, morning, `daily/2026-09-02`: Note first - branches
   `daily/2026-08-29` through `daily/2026-09-01` are pushed to origin but
   none have been opened as PRs or merged into `main` yet, so `main` is
