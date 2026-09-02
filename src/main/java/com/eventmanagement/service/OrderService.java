@@ -7,6 +7,8 @@ import com.eventmanagement.entity.Order;
 import com.eventmanagement.entity.Ticket;
 import com.eventmanagement.entity.TicketType;
 import com.eventmanagement.entity.User;
+import com.eventmanagement.exception.AccessDeniedException;
+import com.eventmanagement.exception.BadRequestException;
 import com.eventmanagement.exception.InsufficientTicketsException;
 import com.eventmanagement.exception.ResourceNotFoundException;
 import com.eventmanagement.repository.OrderRepository;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -67,8 +70,50 @@ public class OrderService {
         }
 
         Order saved = orderRepository.save(order);
+        return toOrderResponse(saved);
+    }
 
-        List<TicketResponse> tickets = saved.getTickets().stream()
+    /**
+     * Locks the order row first (not just the ticket type rows) so two
+     * concurrent cancel attempts on the same order serialize instead of a
+     * race letting both past the already-cancelled check before either
+     * writes, which would double-credit ticket availability.
+     */
+    @Transactional
+    public OrderResponse cancelOrder(Long orderId, User user) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        if (!order.getUser().getId().equals(user.getId())) {
+            throw new AccessDeniedException("You do not have access to this order");
+        }
+
+        if ("REFUNDED".equals(order.getPaymentStatus())) {
+            throw new BadRequestException("Order is already cancelled");
+        }
+
+        if (order.getEvent().getStartDate().isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("Cannot cancel an order after the event has started");
+        }
+
+        Map<Long, Long> ticketCountsByType = order.getTickets().stream()
+                .collect(Collectors.groupingBy(ticket -> ticket.getTicketType().getId(), Collectors.counting()));
+
+        for (Map.Entry<Long, Long> entry : ticketCountsByType.entrySet()) {
+            TicketType ticketType = ticketTypeRepository.findByIdForUpdate(entry.getKey())
+                    .orElseThrow(() -> new ResourceNotFoundException("Ticket type not found"));
+            ticketType.setAvailable(ticketType.getAvailable() + entry.getValue().intValue());
+        }
+
+        order.getTickets().forEach(ticket -> ticket.setStatus("CANCELLED"));
+        order.setPaymentStatus("REFUNDED");
+
+        Order saved = orderRepository.save(order);
+        return toOrderResponse(saved);
+    }
+
+    private OrderResponse toOrderResponse(Order order) {
+        List<TicketResponse> tickets = order.getTickets().stream()
                 .map(ticket -> TicketResponse.builder()
                         .id(ticket.getId())
                         .ticketCode(ticket.getTicketCode())
@@ -78,8 +123,9 @@ public class OrderService {
                 .collect(Collectors.toList());
 
         return OrderResponse.builder()
-                .orderId(saved.getId())
-                .totalAmount(saved.getTotalAmount())
+                .orderId(order.getId())
+                .totalAmount(order.getTotalAmount())
+                .paymentStatus(order.getPaymentStatus())
                 .tickets(tickets)
                 .build();
     }
