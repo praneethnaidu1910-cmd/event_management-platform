@@ -8,6 +8,7 @@ import com.eventmanagement.service.OrderService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,5 +31,12 @@ public class OrderController {
     public ResponseEntity<OrderResponse> purchase(@Valid @RequestBody PurchaseRequest request) {
         User user = currentUserService.getCurrentUser();
         return ResponseEntity.ok(orderService.purchaseTickets(request, user));
+    }
+
+    @PostMapping("/{orderId}/cancel")
+    @PreAuthorize("hasRole('ATTENDEE')")
+    public ResponseEntity<OrderResponse> cancel(@PathVariable Long orderId) {
+        User user = currentUserService.getCurrentUser();
+        return ResponseEntity.ok(orderService.cancelOrder(orderId, user));
     }
 }
