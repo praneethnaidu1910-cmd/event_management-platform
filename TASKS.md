@@ -55,4 +55,19 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-03, morning, `daily/2026-09-03`: Added a real-database concurrency
+  test for the ticket purchase flow (OrderConcurrencyTest - 20 threads racing
+  for 5 tickets against an H2-backed OrderService, not a mocked repository).
+  At full concurrency it reliably reproduced dropped/failed purchases caused
+  by stacking `@Transactional(isolation = SERIALIZABLE)` on top of the
+  existing pessimistic row lock (`findByIdForUpdate`) in OrderService -
+  the lock alone already serializes access to a ticket type's availability,
+  and the extra SERIALIZABLE isolation just gave the DB a second way to
+  abort a legitimate concurrent buyer's transaction (visible to a real user
+  as an unhandled 500 instead of a normal sold-out response), with no retry
+  logic anywhere to recover from it. Removed the SERIALIZABLE isolation;
+  re-ran the new test 3x back to back with no failures. Full suite (33
+  tests) passes via `./mvnw test`. Next session: still open on the roadmap -
+  no controller-level tests exist yet (AuthController/EventController/
+  OrderController), and refunds/cancellations + admin endpoints are still
+  unstarted.
