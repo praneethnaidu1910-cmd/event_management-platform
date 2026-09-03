@@ -12,7 +12,6 @@ import com.eventmanagement.exception.ResourceNotFoundException;
 import com.eventmanagement.repository.OrderRepository;
 import com.eventmanagement.repository.TicketTypeRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -31,7 +30,7 @@ public class OrderService {
         this.ticketTypeRepository = ticketTypeRepository;
     }
 
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional
     public OrderResponse purchaseTickets(PurchaseRequest request, User user) {
         TicketType ticketType = ticketTypeRepository.findByIdForUpdate(request.getTicketTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket type not found"));
