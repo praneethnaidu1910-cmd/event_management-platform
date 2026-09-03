@@ -55,6 +55,38 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-03, evening, `daily/2026-09-03`: Added the first controller-level
+  tests in the project - EventControllerTest, OrderControllerTest,
+  AuthControllerTest (23 new tests), using `@WebMvcTest` with the real
+  `SecurityConfig` imported so `@PreAuthorize` and the security filter chain
+  actually run, rather than mocking security away. JwtAuthenticationFilter's
+  own dependencies (JwtTokenProvider/UserRepository/UserDetailsServiceImpl)
+  are mocked since every test authenticates via `@WithMockUser` instead of a
+  real token, so the filter is present in the chain but never does anything.
+  Needed the `spring-security-test` dependency (test scope only) for
+  `@WithMockUser`; also fixed `mvnw`'s missing executable bit, which was
+  blocking `./mvnw test` from running at all in a fresh checkout.
+  Writing these against the real DispatcherServlet + exception-resolution
+  pipeline (rather than calling controller/handler methods directly, which
+  is all the existing tests did) surfaced two real bugs, fixed in a separate
+  commit before the controller tests were added: (1) `@PreAuthorize` denying
+  a request throws Spring Security's own `AccessDeniedException`, which is a
+  different class from this project's `com.eventmanagement.exception.
+  AccessDeniedException` - GlobalExceptionHandler only had a handler for the
+  latter, so a role-mismatch was coming back as a 500 instead of 403; (2)
+  `MethodArgumentNotValidException` (thrown by `@Valid` on any request body)
+  had no handler at all, so every validation failure on register/login/
+  create-event/purchase was also a 500 instead of 400. Both now have
+  dedicated handlers, covered by new unit tests in GlobalExceptionHandlerTest
+  in addition to being exercised through the controller tests. Full suite
+  (58 tests) passes via `./mvnw test`. This closes out the "no
+  controller-level tests" item flagged by this morning's session. Next
+  session: refunds/cancellations and admin endpoints are still unstarted on
+  the roadmap (item 2); no CI/Docker yet (item 3). Worth a look before
+  picking up new features: GlobalExceptionHandler's generic `Exception ->
+  500` catch-all is now known to be a real fallback path (not just
+  defensive) - worth double-checking there isn't a third exception type in
+  the same boat before it bites someone in production the way these two did.
 - 2026-09-03, morning, `daily/2026-09-03`: Added a real-database concurrency
   test for the ticket purchase flow (OrderConcurrencyTest - 20 threads racing
   for 5 tickets against an H2-backed OrderService, not a mocked repository).
