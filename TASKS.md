@@ -55,6 +55,23 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-04, evening, `daily/2026-09-04`: Added MockMvc controller tests for
+  OrderController (purchase endpoint: attendee success, role rejection,
+  validation failure, ticket-type-not-found and insufficient-tickets error
+  mapping) and AuthController (register and login, success and failure
+  paths). Both had zero test coverage above the service layer, per this
+  morning's note. Writing the validation-failure cases surfaced another
+  gap in the same handler the morning session touched: `@Valid` failures
+  (`MethodArgumentNotValidException`) had no handler in
+  `GlobalExceptionHandler` either, so a malformed register/purchase request
+  was returning 500 instead of 400. Fixed with a dedicated handler that
+  reports the failing field(s), plus a unit test. Tests: 56/56 passing
+  (`./mvnw test`), up from 42 this morning. Every controller now has at
+  least baseline coverage. Next session: no controller is left uncovered,
+  so move to roadmap item 2 (missing backend features) - refunds/cancellations
+  is the natural next piece since it extends the order/ticket flow that's
+  now reasonably well tested; email notification on purchase and admin
+  endpoints are the other open items there.
 - 2026-09-04, morning, `daily/2026-09-04`: Added MockMvc-based controller tests
   for EventController (public GET endpoints, organizer-only create/update/delete,
   role rejection for ATTENDEE and anonymous callers, search param forwarding) -
