@@ -55,4 +55,17 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-04, morning, `daily/2026-09-04`: Added MockMvc-based controller tests
+  for EventController (public GET endpoints, organizer-only create/update/delete,
+  role rejection for ATTENDEE and anonymous callers, search param forwarding) -
+  no controller had test coverage before this. Writing the role-rejection tests
+  surfaced a real bug: `GlobalExceptionHandler` only handled our own
+  `com.eventmanagement.exception.AccessDeniedException`, not Spring Security's
+  `org.springframework.security.access.AccessDeniedException` that `@PreAuthorize`
+  actually throws, so every role-gated endpoint returned 500 instead of 403 for
+  an unauthorized caller. Fixed with a dedicated handler and a regression test.
+  Also fixed `mvnw` being committed without the execute bit (fresh clone couldn't
+  run it). Tests: 42/42 passing (`./mvnw test`), up from 32. Next session should
+  add controller tests for OrderController (the purchase endpoint) and
+  AuthController - both still have zero test coverage at any layer above the
+  service.
