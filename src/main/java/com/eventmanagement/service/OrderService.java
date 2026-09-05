@@ -12,7 +12,6 @@ import com.eventmanagement.exception.ResourceNotFoundException;
 import com.eventmanagement.repository.OrderRepository;
 import com.eventmanagement.repository.TicketTypeRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -36,7 +35,15 @@ public class OrderService {
         this.notificationService = notificationService;
     }
 
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    /**
+     * findByIdForUpdate() already takes a pessimistic write lock on the ticket
+     * type row, which is what actually prevents overselling by serializing
+     * concurrent purchases of the same ticket type. Layering SERIALIZABLE
+     * isolation on top of that lock was redundant, and under real concurrent
+     * load it made the database reject transactions outright with spurious
+     * serialization failures instead of just queuing them behind the row lock.
+     */
+    @Transactional
     public OrderResponse purchaseTickets(PurchaseRequest request, User user) {
         TicketType ticketType = ticketTypeRepository.findByIdForUpdate(request.getTicketTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket type not found"));
