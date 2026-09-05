@@ -25,10 +25,15 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final TicketTypeRepository ticketTypeRepository;
+    private final NotificationService notificationService;
 
-    public OrderService(OrderRepository orderRepository, TicketTypeRepository ticketTypeRepository) {
+    public OrderService(
+            OrderRepository orderRepository,
+            TicketTypeRepository ticketTypeRepository,
+            NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.ticketTypeRepository = ticketTypeRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
@@ -60,6 +65,8 @@ public class OrderService {
         }
 
         Order saved = orderRepository.save(order);
+
+        notificationService.sendPurchaseConfirmation(saved);
 
         List<TicketResponse> tickets = saved.getTickets().stream()
                 .map(ticket -> TicketResponse.builder()
