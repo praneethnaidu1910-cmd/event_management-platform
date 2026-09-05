@@ -55,6 +55,50 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-05, evening, `daily/2026-09-05`: Picked up where this morning's
+  session left off - two focused pieces of work, both scoped away from the
+  duplicated admin-endpoints/refunds and controller-exception-handling work
+  sitting unmerged in the `daily/2026-08-29` through `daily/2026-09-04`
+  branches (still unreviewed; see this morning's entry below).
+
+  1. Added a GitHub Actions CI workflow (roadmap item 3) - builds against
+     JDK 17 and runs `./mvnw test` on every push to `main` and every pull
+     request, plus a skip-tests `package` step so a compile-only break in
+     the jar build itself would also be caught. Added a status badge to
+     the README. Docker was the other half of item 3, and this environment
+     actually had a working `dockerd` (unlike this morning's sandbox), but
+     `docker pull` for any base image (temurin, alpine) came back 403 from
+     the registry's blob CDN - this sandbox's network policy doesn't allow
+     it - so a Dockerfile still couldn't be built or run to verify it
+     actually works. Left undone rather than committing an untested one;
+     next session should retry in case the network policy differs, or get
+     a human to confirm Docker Hub access is intentionally unavailable
+     here before working around it another way.
+
+  2. While adding a concurrency test for the ticket purchase flow (roadmap
+     item 1 - the existing OrderServiceTest only exercises purchaseTickets()
+     against a mocked repository, so it never actually ran the
+     PESSIMISTIC_WRITE lock findByIdForUpdate() relies on), found a real
+     bug: with 20 buyers racing for 5 tickets against a real database,
+     purchases started failing with "Deadlock detected" instead of either
+     succeeding or cleanly reporting sold-out. OrderService.purchaseTickets()
+     combined that row lock with `@Transactional(isolation = SERIALIZABLE)`,
+     and under real contention the database was rejecting transactions
+     outright rather than queuing them behind the lock like a plain
+     PESSIMISTIC_WRITE transaction does - the lock alone is what prevents
+     overselling, so the extra isolation was redundant and, under load,
+     would have shown up as a failed purchase for a buyer who should have
+     succeeded. Dropped back to the default isolation level; the new test
+     passes reliably across repeated runs.
+
+  Tests: 35/35 passing (`./mvnw test`), run three times to check the new
+  concurrency test isn't flaky. Next: the branch-review/merge backlog from
+  this morning's entry is still open and getting more relevant, not less,
+  every day it's not addressed. Once that's caught up on, remaining
+  roadmap item 2 work (refunds/cancellations, admin endpoints) already
+  exists in `daily/2026-08-30` and `daily/2026-09-02` - review those before
+  anyone writes a third copy. Docker (see above) is still blocked here.
+
 - 2026-09-05, morning, `daily/2026-09-05`: Added a purchase confirmation
   email (roadmap item 2) - a new NotificationService sends a plain-text
   confirmation via spring-boot-starter-mail once OrderService.purchaseTickets()
