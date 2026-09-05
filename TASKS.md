@@ -55,4 +55,35 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-05, morning, `daily/2026-09-05`: Added a purchase confirmation
+  email (roadmap item 2) - a new NotificationService sends a plain-text
+  confirmation via spring-boot-starter-mail once OrderService.purchaseTickets()
+  commits, with send failures caught/logged rather than propagated so a
+  down SMTP server can't fail an already-successful purchase. Also
+  re-applied the `chmod +x mvnw` fix (missing again on a fresh checkout
+  from main). Tests: 34/34 passing (`./mvnw test`).
+
+  Important gap found this session, flagging for a human decision rather
+  than working around it: none of the `daily/2026-08-29` through
+  `daily/2026-09-04` branches (7 days, 14 sessions) have been merged into
+  `main`. Each one forked from `main` fresh and, not knowing about the
+  others, independently re-discovered and re-fixed the same two bugs
+  (GlobalExceptionHandler returning 500 instead of 403 for @PreAuthorize
+  denials, and 500 instead of 400 for @Valid failures) and re-wrote
+  overlapping controller test suites multiple times - e.g. `daily/2026-09-01`,
+  `daily/2026-09-03`, and `daily/2026-09-04` each contain their own version
+  of essentially the same fix and similar MockMvc tests. Order
+  cancellation/refund and admin endpoints (roadmap item 2) were also already
+  built, independently, in both `daily/2026-08-30` and `daily/2026-09-02`.
+  None of this is wasted in the sense of being wrong - each branch's tests
+  pass on its own - but the duplication means real engineering time went
+  into rebuilding the same thing several times instead of compounding.
+  This branch was deliberately scoped away from all of that (email
+  notifications, untouched by every prior branch) to avoid adding an 8th
+  duplicate. Recommend reviewing/merging the most complete of the existing
+  daily branches (`daily/2026-09-04` looks most advanced for the
+  tests/exception-handling work) before more automated sessions run,
+  otherwise this will keep happening. Next session: once caught up on
+  review, admin endpoints and Dockerizing (roadmap items 2/3) are still
+  open; Docker couldn't be attempted/verified today since no Docker daemon
+  was available in this sandbox to build or run an image against.
