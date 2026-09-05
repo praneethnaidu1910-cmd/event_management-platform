@@ -1,5 +1,7 @@
 ## Event Management Platform - Backend
 
+[![CI](https://github.com/praneethnaidu1910-cmd/event_management-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/praneethnaidu1910-cmd/event_management-platform/actions/workflows/ci.yml)
+
 Spring Boot backend for a Ticketmaster/Eventbrite‑style platform where organizers create events and attendees purchase tickets.
 
 ### Features
