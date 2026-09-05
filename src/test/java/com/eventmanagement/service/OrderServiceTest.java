@@ -36,6 +36,7 @@ class OrderServiceTest {
     private OrderRepository orderRepository;
     private TicketTypeRepository ticketTypeRepository;
     private EventRepository eventRepository;
+    private NotificationService notificationService;
     private OrderService orderService;
 
     @BeforeEach
@@ -43,7 +44,8 @@ class OrderServiceTest {
         orderRepository = mock(OrderRepository.class);
         ticketTypeRepository = mock(TicketTypeRepository.class);
         eventRepository = mock(EventRepository.class);
-        orderService = new OrderService(orderRepository, ticketTypeRepository, eventRepository);
+        notificationService = mock(NotificationService.class);
+        orderService = new OrderService(orderRepository, ticketTypeRepository, eventRepository, notificationService);
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
@@ -81,6 +83,7 @@ class OrderServiceTest {
             assertThat(ticket.getTicketCode()).isNotBlank();
         });
         assertThat(response.getTickets().stream().map(t -> t.getTicketCode()).distinct().count()).isEqualTo(3);
+        verify(notificationService).sendPurchaseConfirmation(any(Order.class));
     }
 
     @Test
@@ -94,6 +97,7 @@ class OrderServiceTest {
 
         assertThat(ticketType.getAvailable()).isEqualTo(2);
         verify(orderRepository, never()).save(any());
+        verify(notificationService, never()).sendPurchaseConfirmation(any());
     }
 
     @Test
@@ -105,6 +109,7 @@ class OrderServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(orderRepository, never()).save(any());
+        verify(notificationService, never()).sendPurchaseConfirmation(any());
     }
 
     private Order activeOrder(User buyer, TicketType ticketType, int ticketCount, LocalDateTime eventStartDate) {

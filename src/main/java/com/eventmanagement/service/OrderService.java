@@ -32,12 +32,14 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final TicketTypeRepository ticketTypeRepository;
     private final EventRepository eventRepository;
+    private final NotificationService notificationService;
 
     public OrderService(OrderRepository orderRepository, TicketTypeRepository ticketTypeRepository,
-                         EventRepository eventRepository) {
+                         EventRepository eventRepository, NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.ticketTypeRepository = ticketTypeRepository;
         this.eventRepository = eventRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -77,6 +79,7 @@ public class OrderService {
         }
 
         Order saved = orderRepository.save(order);
+        notificationService.sendPurchaseConfirmation(saved);
         return toOrderResponse(saved);
     }
 
