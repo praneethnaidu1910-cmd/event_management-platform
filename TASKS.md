@@ -55,6 +55,25 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-06, evening, `daily/2026-09-06`: added MockMvc controller
+  tests for AuthController, EventController, and OrderController (the
+  gap called out by this morning's entry) - request validation, role
+  enforcement (organizer/attendee/anonymous) via the real SecurityConfig
+  and method security, and the exception-to-status-code mapping for
+  each controller's failure cases. Needed `spring-security-test` for
+  `@WithMockUser`, added as a test dependency. Writing the authorization
+  tests turned up a real bug along the way: `GlobalExceptionHandler`'s
+  catch-all handler was intercepting Spring Security's own
+  `AccessDeniedException` (thrown by `@PreAuthorize` when an
+  authenticated user lacks the right role) before the security filter
+  chain could translate it, so those requests got a 500 "Unexpected
+  error" instead of a 403 - anonymous requests were fine since those
+  get denied earlier, at the URL-level filter. Added a dedicated
+  handler mapping it to 403 plus a unit test. Full suite green (52
+  tests, up from 33). Next session: roadmap item 2 (refunds/
+  cancellations, admin endpoints, email notification on purchase) -
+  refunds/cancellations is probably the best starting point since it's
+  the most natural extension of the existing order/ticket flow.
 - 2026-09-06, morning, `daily/2026-09-06`: found that `GlobalExceptionHandler`'s
   catch-all `Exception` handler was also swallowing `MethodArgumentNotValidException`,
   so any `@Valid` failure (e.g. registering with a malformed email or a short
