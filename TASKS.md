@@ -55,4 +55,14 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-06, morning, `daily/2026-09-06`: found that `GlobalExceptionHandler`'s
+  catch-all `Exception` handler was also swallowing `MethodArgumentNotValidException`,
+  so any `@Valid` failure (e.g. registering with a malformed email or a short
+  password) came back as a 500 "Unexpected error" instead of a 400 with the
+  actual field errors. Added a dedicated handler for it plus a `fieldErrors`
+  map on `ErrorResponse`, and a unit test covering it. Also fixed `mvnw`'s
+  missing executable bit (a fresh checkout couldn't run it). Full suite green
+  (33 tests). Next session: still no controller-level (MockMvc) tests for
+  AuthController/EventController/OrderController - only service-layer unit
+  tests exist there; that's the natural next step before moving on to roadmap
+  item 2 (refunds/cancellations, admin endpoints, email notifications).
