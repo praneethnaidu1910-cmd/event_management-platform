@@ -2,11 +2,19 @@ package com.eventmanagement.exception;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class GlobalExceptionHandlerTest {
 
@@ -15,6 +23,25 @@ class GlobalExceptionHandlerTest {
     @BeforeEach
     void setUp() {
         handler = new GlobalExceptionHandler();
+    }
+
+    @Test
+    void handlesValidationFailureWithFieldErrors() {
+        FieldError emailError = new FieldError("registerRequest", "email", "must be a well-formed email address");
+        FieldError passwordError = new FieldError("registerRequest", "password", "size must be at least 6");
+        BindingResult bindingResult = mock(BindingResult.class);
+        when(bindingResult.getFieldErrors()).thenReturn(List.of(emailError, passwordError));
+        MethodArgumentNotValidException ex = new MethodArgumentNotValidException(mock(MethodParameter.class), bindingResult);
+
+        ResponseEntity<?> response = handler.handleValidation(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(bodyMessage(response)).isEqualTo("Validation failed");
+        com.eventmanagement.dto.response.ErrorResponse body =
+                (com.eventmanagement.dto.response.ErrorResponse) response.getBody();
+        assertThat(body.getFieldErrors())
+                .containsEntry("email", "must be a well-formed email address")
+                .containsEntry("password", "size must be at least 6");
     }
 
     @Test
