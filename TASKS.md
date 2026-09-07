@@ -35,6 +35,10 @@ break against instead of failing silently in production.
 - Tests: unit coverage for GlobalExceptionHandler (6 tests), and an event
   search endpoint (keyword/category/location/date filters) with both a
   mocked-repository unit test and a real H2-backed query test.
+- Tests: @WebMvcTest slice coverage for all three REST controllers
+  (EventController, AuthController, OrderController) - routing, request
+  validation, and exception-to-status mapping, with services mocked and
+  security filters disabled.
 - No CI, no frontend, no deployment yet.
 - 2026-08-28: repo moved from a fork of yashaswini-tdr/event_management-platform
   into praneethnaidu1910-cmd's own account, so the automated sessions have
@@ -55,6 +59,27 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-07, evening, `daily/2026-09-07`: added the two controller test
+  classes the morning session flagged as the remaining gap -
+  OrderControllerTest (purchase success, ticketTypeId/quantity validation,
+  400 on InsufficientTicketsException, 404 on missing ticket type) and
+  AuthControllerTest (register success, blank-email/short-password
+  validation, 400 on duplicate email, login success, 401 on bad
+  credentials). Both are pure controller slices - OrderService,
+  AuthService, and CurrentUserService are mocked, so the transactional
+  inventory logic and credential/token handling aren't touched, just the
+  routing/validation/exception-mapping around them. That closes out the
+  "Tests" roadmap item for all three existing REST controllers plus the
+  service layer coverage from earlier sessions. Full suite: 50 tests
+  passing (`./mvnw test`). Did not attempt the next roadmap item
+  (refunds/cancellations) this session - it needs new inventory-restoring
+  logic in OrderService, which the working notes call out as something
+  that deserves a feature branch + PR rather than a same-day drive-by, so
+  left it for a dedicated session. Next: pick up feature 2 from the
+  roadmap (refunds/cancellations, admin endpoints, or email notification
+  on purchase) - refunds/cancellations touches ticket inventory directly,
+  so plan for a feature branch and extra test scrutiny on the inventory
+  restore path rather than doing it inline on a daily branch.
 - 2026-09-07, morning, `daily/2026-09-07`: added @WebMvcTest coverage for
   EventController (list/search/get/create-validation, security filters
   disabled since this slice tests request handling, not @PreAuthorize).
