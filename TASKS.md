@@ -55,4 +55,16 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-07, morning, `daily/2026-09-07`: added @WebMvcTest coverage for
+  EventController (list/search/get/create-validation, security filters
+  disabled since this slice tests request handling, not @PreAuthorize).
+  Writing that test surfaced a real bug: GlobalExceptionHandler had no
+  handler for MethodArgumentNotValidException, so `@Valid` failures on
+  controller request bodies were falling through to the catch-all
+  Exception handler and coming back as 500 "Unexpected error" instead of
+  400. Fixed it with a dedicated handler (field name + message), covered
+  by a new GlobalExceptionHandlerTest case. Also fixed mvnw's missing
+  exec bit. Full suite: 38 tests passing (`./mvnw test`). Next: controller
+  tests for AuthController and OrderController are the remaining gap in
+  the "Tests" roadmap item - OrderController's purchase endpoint is the
+  one with concurrency/inventory logic worth the most scrutiny.
