@@ -5,8 +5,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class GlobalExceptionHandlerTest {
 
@@ -15,6 +22,19 @@ class GlobalExceptionHandlerTest {
     @BeforeEach
     void setUp() {
         handler = new GlobalExceptionHandler();
+    }
+
+    @Test
+    void handlesValidationFailureWithFieldDetails() {
+        BindException bindException = mock(BindException.class);
+        when(bindException.getFieldErrors()).thenReturn(
+                List.of(new FieldError("eventRequest", "title", "must not be blank")));
+        MethodArgumentNotValidException ex = new MethodArgumentNotValidException(null, bindException);
+
+        ResponseEntity<?> response = handler.handleValidation(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(bodyMessage(response)).isEqualTo("title: must not be blank");
     }
 
     @Test
