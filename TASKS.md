@@ -55,4 +55,29 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-08 morning (`daily/2026-09-08`): Added `OrderServiceConcurrencyTest`,
+  a real-database test for the ticket purchase flow. The existing
+  `OrderServiceTest` only calls `purchaseTickets()` against a mocked
+  repository one at a time, so it never exercised the pessimistic row lock
+  (`findByIdForUpdate`) that's supposed to stop overselling under real
+  concurrent load - which is the specific risk this roadmap item calls out.
+  The new test spins up 30 threads buying against a 10-ticket allotment on a
+  real (in-memory H2) Spring context and asserts exactly 10 succeed, the
+  rest get `InsufficientTicketsException`, and available/ticket counts never
+  exceed what was in stock. Purchases retry on `CannotAcquireLockException`
+  since H2's lock manager sometimes reports plain single-row contention at
+  this thread count as a deadlock rather than queuing waiters like Postgres
+  would; this mirrors the retry a client would need under real SERIALIZABLE
+  contention in production. Ran 4 times locally with no flakes. Full suite:
+  33/33 passing.
+  Next up: still no test coverage for the controller layer (AuthController/
+  EventController/OrderController), or for CurrentUserService,
+  UserDetailsServiceImpl, SecurityConfig. Also worth a look: OrderService
+  uses `@Transactional(isolation = SERIALIZABLE)` *and* an explicit
+  pessimistic write lock together, which under heavy contention against
+  H2 shows up as spurious `CannotAcquireLockException`/deadlock errors
+  even for single-row contention (see the retry logic added in this
+  session) - worth checking whether SERIALIZABLE is pulling its weight
+  on top of the row lock, or whether dropping to READ_COMMITTED would be
+  simpler and just as safe, before building more features on top of this
+  flow.
