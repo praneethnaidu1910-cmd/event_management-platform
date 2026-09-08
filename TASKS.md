@@ -55,6 +55,38 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-08 evening (`daily/2026-09-08`): Added `@WebMvcTest` coverage for
+  AuthController, EventController, and OrderController (20 new tests) -
+  the controller layer had zero coverage before this, per this morning's
+  "next up" note. Each test class imports the real `SecurityConfig` and
+  `JwtAuthenticationFilter` (with their dependencies mocked) rather than
+  mocking the filter itself, so `@PreAuthorize` role checks are genuinely
+  exercised via `@WithMockUser` instead of silently no-op'd, which is a
+  common trap with this test slice. Added `spring-security-test` as a test
+  dependency for `@WithMockUser`.
+  Writing these tests surfaced two real bugs in `GlobalExceptionHandler`,
+  both fixed and covered: (1) `@Valid` failures on request bodies had no
+  matching handler and fell through to the catch-all, returning 500
+  instead of 400; (2) Spring Security's `AccessDeniedException` (thrown by
+  `@PreAuthorize` on a role mismatch) collided with the same catch-all for
+  the same reason - the existing handler only matched the app's own
+  `AccessDeniedException` class, not Spring Security's, so every wrong-role
+  request was returning 500 instead of 403.
+  Also found, but deliberately left alone: an anonymous request to a
+  protected endpoint returns 403, not 401, because `SecurityConfig` never
+  registers an `AuthenticationEntryPoint` (Spring Security falls back to
+  `Http403ForbiddenEntryPoint`). Test expectations were adjusted to match
+  this actual behavior rather than "fixing" it, since that's a SecurityConfig
+  change and the instructions for this session call for extra caution
+  there - it's a reasonable small follow-up for a session with more room
+  to test it properly, not an urgent bug.
+  Full suite: 55/55 passing, run three times with no flakes.
+  Next up: still no test coverage for `CurrentUserService`,
+  `UserDetailsServiceImpl`, or `SecurityConfig` itself. Also on the roadmap:
+  decide whether to add a proper `AuthenticationEntryPoint` (401 instead of
+  403 for missing/invalid auth) noted above, then move to roadmap item 2
+  (refunds/cancellations, admin endpoints, email on purchase) now that the
+  auth/event/order flows all have real test coverage underneath them.
 - 2026-09-08 morning (`daily/2026-09-08`): Added `OrderServiceConcurrencyTest`,
   a real-database test for the ticket purchase flow. The existing
   `OrderServiceTest` only calls `purchaseTickets()` against a mocked
