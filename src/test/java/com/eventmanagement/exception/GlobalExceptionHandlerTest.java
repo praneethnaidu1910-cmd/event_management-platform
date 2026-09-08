@@ -2,11 +2,19 @@ package com.eventmanagement.exception;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class GlobalExceptionHandlerTest {
 
@@ -42,11 +50,36 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handlesValidationFailure() {
+        FieldError emailError = new FieldError("registerRequest", "email", "must be a well-formed email address");
+        FieldError passwordError = new FieldError("registerRequest", "password", "size must be between 6 and 2147483647");
+        BindingResult bindingResult = mock(BindingResult.class);
+        when(bindingResult.getFieldErrors()).thenReturn(List.of(emailError, passwordError));
+        MethodArgumentNotValidException ex =
+                new MethodArgumentNotValidException(mock(MethodParameter.class), bindingResult);
+
+        ResponseEntity<?> response = handler.handleValidation(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(bodyMessage(response))
+                .isEqualTo("email must be a well-formed email address, password size must be between 6 and 2147483647");
+    }
+
+    @Test
     void handlesAccessDenied() {
         ResponseEntity<?> response = handler.handleAccessDenied(new AccessDeniedException("Not the event organizer"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(bodyMessage(response)).isEqualTo("Not the event organizer");
+    }
+
+    @Test
+    void handlesSpringSecurityAccessDenied() {
+        ResponseEntity<?> response = handler.handleSpringSecurityAccessDenied(
+                new org.springframework.security.access.AccessDeniedException("Access is denied"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(bodyMessage(response)).isEqualTo("Access is denied");
     }
 
     @Test
