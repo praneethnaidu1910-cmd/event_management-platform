@@ -32,9 +32,13 @@ break against instead of failing silently in production.
   AuthService, EventService, OrderService (19 tests, merged in PR #1).
 - GraphQL: a query layer over the events read path (events/event(id)),
   merged in PR #2.
-- Tests: unit coverage for GlobalExceptionHandler (6 tests), and an event
-  search endpoint (keyword/category/location/date filters) with both a
-  mocked-repository unit test and a real H2-backed query test.
+- Tests: unit coverage for GlobalExceptionHandler (7 tests, including
+  validation error mapping), and an event search endpoint
+  (keyword/category/location/date filters) with both a mocked-repository
+  unit test and a real H2-backed query test.
+- Tests: MockMvc coverage for AuthController (register/login, including
+  the 400-on-invalid-payload path) - the first controller-level tests
+  in the project.
 - No CI, no frontend, no deployment yet.
 - 2026-08-28: repo moved from a fork of yashaswini-tdr/event_management-platform
   into praneethnaidu1910-cmd's own account, so the automated sessions have
@@ -55,4 +59,38 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-09, morning, `daily/2026-09-09`: Tried to add a real (H2-backed)
+  concurrency test for OrderService.purchaseTickets - spinning up 6-20
+  threads buying the same ticket type at once to prove the pessimistic
+  lock stops overselling. It's reproducibly broken on H2:
+  `Isolation.SERIALIZABLE` combined with the `PESSIMISTIC_WRITE` lock
+  means only the first transaction to touch the row ever succeeds: every
+  other concurrent transaction aborts with a `40001` serialization
+  failure ("Deadlock detected") instead of blocking and retrying with
+  the fresh row - this held regardless of thread count or how many
+  tickets were available. Whether real Postgres (what the app actually
+  runs on) behaves the same way for a plain single-row `SELECT ... FOR
+  UPDATE` is unclear without testing against it directly, so I backed
+  the test out rather than commit something flaky or misleading, and
+  picked a smaller, safer piece of work instead: `GlobalExceptionHandler`
+  had no handler for `MethodArgumentNotValidException`, so any `@Valid`
+  failure (blank email, short password, etc.) fell through to the
+  generic handler and came back as a 500 instead of a 400 - fixed that,
+  and added MockMvc tests for `AuthController` (register/login) that
+  exercise validation and the exception handler together over real HTTP,
+  not just the service layer. Tests: full suite green, 37 tests
+  (`./mvnw test`).
+  Next session should pick up: (a) actually resolve the OrderService
+  concurrency question - either verify against a real Postgres instance
+  whether SERIALIZABLE + FOR UPDATE really causes this on the same
+  engine the app deploys to, or add a retry-on-serialization-failure
+  path to `purchaseTickets` and then write the concurrency test against
+  that; this touches the purchase flow so treat it carefully and small.
+  (b) Controller-level tests for `EventController` and `OrderController`
+  are still missing - same MockMvc + `@WebMvcTest` pattern used here for
+  `AuthController`, but those two are behind auth (`anyRequest().authenticated()`
+  in `SecurityConfig`), so the JWT filter can't just be excluded from the
+  slice like it was for the public auth endpoints - will need either
+  `@MockBean` for `JwtTokenProvider`/`UserDetailsServiceImpl` or a
+  `@WithMockUser`-style approach (would need the `spring-security-test`
+  dependency, not currently in `pom.xml`).
