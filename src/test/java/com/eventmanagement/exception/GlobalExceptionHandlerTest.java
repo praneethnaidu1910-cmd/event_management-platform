@@ -2,9 +2,14 @@ package com.eventmanagement.exception;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -55,6 +60,23 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(bodyMessage(response)).isEqualTo("Bad credentials");
+    }
+
+    @Test
+    void handlesValidationErrors() throws NoSuchMethodException {
+        BindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "registerRequest");
+        bindingResult.addError(new FieldError("registerRequest", "email", "must not be blank"));
+        MethodParameter methodParameter = new MethodParameter(
+                GlobalExceptionHandlerTest.class.getDeclaredMethod("dummyTarget", Object.class), 0);
+        MethodArgumentNotValidException ex = new MethodArgumentNotValidException(methodParameter, bindingResult);
+
+        ResponseEntity<?> response = handler.handleValidation(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(bodyMessage(response)).isEqualTo("email must not be blank");
+    }
+
+    private void dummyTarget(Object arg) {
     }
 
     @Test
