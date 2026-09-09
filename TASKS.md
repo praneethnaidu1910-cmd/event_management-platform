@@ -59,6 +59,41 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-09, evening, `daily/2026-09-09`: Picked up item (b) from this
+  morning's notes: controller-level tests for `EventController` and
+  `OrderController`, using the same `@WebMvcTest` + MockMvc pattern as
+  `AuthControllerTest`, with `spring-security-test`'s `@WithMockUser` added
+  to `pom.xml` for the authenticated cases. While wiring these up, tried
+  importing a nested `@EnableMethodSecurity` config into the slice so the
+  `@PreAuthorize` role checks could be verified end-to-end - that broke
+  `RequestMappingHandlerMapping`'s handler detection entirely (every
+  request fell through to the static-resource handler and came back as a
+  500), a real Spring Security/WebMvcTest interaction quirk, not something
+  worth fighting for a small session. Backed that out; these tests cover
+  request mapping, validation, and exception translation, not the
+  `@PreAuthorize` enforcement itself (that lives in `SecurityConfig` and
+  would need a full `@SpringBootTest` context to exercise honestly).
+  Reading through the exception-handling path for this did turn up a real
+  bug worth fixing on its own merits: `@PreAuthorize` denials throw
+  Spring Security's `AccessDeniedException`, a different class from our
+  own `exception.AccessDeniedException`, and only the latter had a
+  handler - the security one fell through to the generic handler and
+  came back as a 500 instead of a 403 (Spring MVC resolves it inside
+  `DispatcherServlet` before `ExceptionTranslationFilter` ever sees it).
+  Added a dedicated handler for it, with a direct unit test (not
+  depending on the WebMvcTest slice, so it doesn't share that quirk).
+  Tests: full suite green, 51 tests (`./mvnw test`). Commits: the
+  `AccessDeniedException` fix, `EventControllerTest`, `OrderControllerTest`.
+  Next session should pick up: (a) the `OrderService` concurrency question
+  is still open from yesterday morning - needs verification against real
+  Postgres or a retry-on-serialization-failure path before a concurrency
+  test can be written; this touches the purchase flow, so treat it
+  carefully and small. (b) If controller-level authorization coverage is
+  wanted, it needs a `@SpringBootTest`-based test (full context, real
+  `SecurityConfig`) rather than a `@WebMvcTest` slice, given the
+  `@EnableMethodSecurity` incompatibility found today. (c) Missing backend
+  features (refunds/cancellations, admin endpoints, email notifications)
+  and CI/deployment are both still untouched.
 - 2026-09-09, morning, `daily/2026-09-09`: Tried to add a real (H2-backed)
   concurrency test for OrderService.purchaseTickets - spinning up 6-20
   threads buying the same ticket type at once to prove the pessimistic
