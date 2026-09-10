@@ -55,4 +55,54 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-10, morning, `daily/2026-09-10`: Before picking up new work,
+  noticed a systemic problem worth flagging: none of the eleven daily
+  branches from 2026-08-29 through 2026-09-09 have been merged into
+  `main` yet, and since each morning session branches fresh off `main`
+  (as designed), a lot of those branches ended up independently
+  re-solving the same handful of gaps - controller-layer MockMvc tests
+  for Auth/Event/Order, the `@PreAuthorize`-denial-returns-500 and
+  `@Valid`-failure-returns-500 exception-handler fixes, and a
+  ticket-purchase concurrency test all show up in three or more
+  separate branches. None of that duplicated work is wasted exactly
+  (each branch is a real, reviewable candidate PR), but it means
+  `main` and this log are both behind what's actually been built -
+  reviewing and merging some of those branches (or at least deciding
+  which one's version of each fix to keep) would make future sessions
+  more useful than starting from the same stale base every day.
+  Given that, picked something not attempted in any prior branch:
+  roadmap item 3 (deployment/devops), starting with just the Docker
+  packaging piece rather than CI or an actual deploy. Added a
+  multi-stage `Dockerfile` (Temurin JDK to build, Temurin JRE to run
+  as a non-root user) and a `docker-compose.yml` pairing the app with
+  `postgres:16-alpine`. `schema.sql`'s leading `CREATE DATABASE`
+  statement doesn't fit the official Postgres image's init-script
+  convention (POSTGRES_DB already creates the database, so a second
+  CREATE DATABASE aborts the init script before the tables get
+  created), so added `db/docker-entrypoint-initdb.d/apply-schema.sh`,
+  which strips that one line and applies the rest, rather than forking
+  a second copy of the schema. Also fixed `mvnw` being committed
+  without its executable bit (every prior branch had to `chmod +x` it
+  separately - never made it back into `main`).
+  This sandbox has no Docker daemon (`docker compose build` fails to
+  reach `/var/run/docker.sock`, and `dockerd` won't start here either),
+  so `docker compose up` itself is unverified. Verified as much of the
+  chain as possible without it: built the jar the same way the Docker
+  build stage does (`mvnw package -DskipTests`), ran the same
+  grep-and-pipe the init script uses against a real local Postgres 16
+  to apply the (stripped) schema, then ran the jar against that
+  database - `GET /api/events` returned 200. `docker compose config`
+  validates the compose file. Test status: full suite green, 32 tests
+  (`./mvnw test`) - unchanged by this session, no Java source touched.
+  Next session should pick up: (a) ideally a human reviews and merges
+  at least one or two of the backlog of unmerged daily branches so
+  `main` stops being stuck at 2026-08-28 - that's a bigger unlock than
+  anything an automated session can do alone. (b) If continuing the
+  deployment item directly: add the GitHub Actions CI workflow (build +
+  `mvnw test`) - note `daily/2026-09-05` morning already has one
+  version of this unmerged. (c) Actually run `docker compose up --build`
+  somewhere with a working Docker daemon to confirm the app container
+  boots end-to-end, since this session could only verify the pieces
+  separately. (d) Missing backend features (refunds/cancellations,
+  admin endpoints, email notifications) also have unmerged prior
+  attempts (`daily/2026-08-30`, `daily/2026-09-02`, `daily/2026-09-05`).
