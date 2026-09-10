@@ -64,6 +64,25 @@ mvn spring-boot:run
 
 The API will be available at `http://localhost:8080`.
 
+### Running with Docker
+No local Java, Maven, or Postgres install needed - just Docker.
+
+```bash
+docker compose up --build
+```
+
+This builds the app image (multi-stage `Dockerfile`, Java 17) and starts it
+alongside a `postgres:16-alpine` container. On first boot the Postgres
+container applies `db/schema.sql` automatically (see
+`db/docker-entrypoint-initdb.d/apply-schema.sh`), so there's no manual
+database setup step. The API is available at `http://localhost:8080` once
+both containers report healthy.
+
+Override `DB_PASSWORD` and `JWT_SECRET` via a `.env` file or the shell
+environment before running `docker compose up` for anything beyond local
+experimentation - the compose file falls back to the same placeholder
+values as `application.properties`.
+
 ### Core API Endpoints
 
 #### Auth
