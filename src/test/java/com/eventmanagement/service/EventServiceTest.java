@@ -6,6 +6,7 @@ import com.eventmanagement.dto.response.EventResponse;
 import com.eventmanagement.entity.Event;
 import com.eventmanagement.entity.User;
 import com.eventmanagement.exception.AccessDeniedException;
+import com.eventmanagement.exception.BadRequestException;
 import com.eventmanagement.exception.ResourceNotFoundException;
 import com.eventmanagement.repository.EventRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,6 +71,17 @@ class EventServiceTest {
     }
 
     @Test
+    void createEvent_rejectsEndDateAtOrBeforeStartDate() {
+        EventRequest request = eventRequest();
+        request.setEndDate(request.getStartDate());
+
+        assertThatThrownBy(() -> eventService.createEvent(request, organizer(1L)))
+                .isInstanceOf(BadRequestException.class);
+
+        verify(eventRepository, never()).save(any());
+    }
+
+    @Test
     void createEvent_honorsExplicitStatus() {
         EventRequest request = eventRequest();
         request.setStatus(Event.EventStatus.PUBLISHED);
@@ -126,6 +138,27 @@ class EventServiceTest {
 
         assertThatThrownBy(() -> eventService.updateEvent(7L, eventRequest(), organizer(2L)))
                 .isInstanceOf(AccessDeniedException.class);
+
+        verify(eventRepository, never()).save(any());
+    }
+
+    @Test
+    void updateEvent_rejectsEndDateAtOrBeforeStartDate() {
+        Event event = Event.builder()
+                .id(7L)
+                .organizer(organizer(1L))
+                .title("Music Festival")
+                .location("City Park")
+                .status(Event.EventStatus.DRAFT)
+                .ticketTypes(new java.util.ArrayList<>())
+                .build();
+        when(eventRepository.findById(7L)).thenReturn(Optional.of(event));
+
+        EventRequest request = eventRequest();
+        request.setEndDate(request.getStartDate().minusHours(1));
+
+        assertThatThrownBy(() -> eventService.updateEvent(7L, request, organizer(1L)))
+                .isInstanceOf(BadRequestException.class);
 
         verify(eventRepository, never()).save(any());
     }

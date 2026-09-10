@@ -8,6 +8,7 @@ import com.eventmanagement.entity.Event;
 import com.eventmanagement.entity.TicketType;
 import com.eventmanagement.entity.User;
 import com.eventmanagement.exception.AccessDeniedException;
+import com.eventmanagement.exception.BadRequestException;
 import com.eventmanagement.exception.ResourceNotFoundException;
 import com.eventmanagement.repository.EventRepository;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,8 @@ public class EventService {
     }
 
     public EventResponse createEvent(EventRequest request, User organizer) {
+        validateDates(request);
+
         Event event = new Event();
         event.setOrganizer(organizer);
         event.setTitle(request.getTitle());
@@ -83,6 +86,12 @@ public class EventService {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
+    private void validateDates(EventRequest request) {
+        if (!request.getEndDate().isAfter(request.getStartDate())) {
+            throw new BadRequestException("Event end date must be after the start date");
+        }
+    }
+
     public EventResponse getEventById(Long id) {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
@@ -98,6 +107,7 @@ public class EventService {
         if (!event.getOrganizer().getId().equals(organizer.getId())) {
             throw new AccessDeniedException("Not the event organizer");
         }
+        validateDates(request);
 
         event.setTitle(request.getTitle());
         event.setDescription(request.getDescription());
