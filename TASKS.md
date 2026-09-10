@@ -55,6 +55,72 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-10, evening, `daily/2026-09-10`: Continued from this morning's
+  session on this same branch (Dockerfile + docker-compose). First
+  followed up on the morning log's item (c): this sandbox actually has
+  a working Docker daemon (unlike the morning's, which had none at all),
+  so `docker compose up --build` got further, but image pulls
+  (`eclipse-temurin:17-jre-jammy`, `postgres:16-alpine`) both fail with
+  a 403 from the org's egress policy on `production.cloudfront.docker.com`
+  (Docker Hub's blob CDN) - confirmed with a direct `docker pull` of the
+  base image alone, and via the proxy's own status endpoint, which logs
+  it as a policy denial rather than a transient failure. So the
+  Dockerfile/compose setup itself still isn't end-to-end verified, but
+  now for a different, more precise reason than "no Docker daemon" -
+  worth knowing before a future session burns time retrying the same
+  pull. Did not attempt to route around the block.
+  Picked three items instead, deliberately avoiding the roadmap work
+  already duplicated across the unmerged backlog (controller-layer
+  MockMvc tests for Auth/Event/Order show up in eight separate branches;
+  refunds, admin stats, and email notifications each show up in at least
+  one): (1) added the GitHub Actions CI workflow (build + `mvnw test`)
+  from the morning log's item (b) - this one does duplicate
+  `daily/2026-09-05`'s unmerged version, but it's a single small file and
+  worth having on this branch regardless of which copy a human keeps.
+  (2) Added `SecurityConfigTest`, a `@SpringBootTest` + MockMvc test that
+  exercises the real filter chain (JWT filter, `@PreAuthorize`, H2 in
+  place of Postgres) instead of mocking security away, since nothing
+  existing verified the URL rules and role checks end to end. It
+  immediately caught two real bugs - a `@PreAuthorize` denial and a
+  failed `@Valid` validation both returned 500 instead of 403/400,
+  because `GlobalExceptionHandler` had no handler for Spring Security's
+  `AccessDeniedException` or for `MethodArgumentNotValidException` and
+  both fell through to the generic 500 case. Fixed both by adding the
+  two missing handlers; no authorization logic changed. (These are the
+  same two bugs the morning log flagged as independently fixed in three
+  or more other unmerged branches - this branch found them a different
+  way, through an integration test rather than controller unit tests,
+  so it's still adding to that duplicate pile rather than resolving it;
+  a human merging one branch's fix should be able to drop the other
+  branches' equivalent hunks as a no-op.) Deliberately left the
+  403-vs-401 status for a missing/invalid token as is (Spring Security's
+  default `Http403ForbiddenEntryPoint`, no custom entry point
+  configured) rather than reconfiguring `SecurityConfig` for it - that's
+  a legitimate default, not a bug, and changing it would have meant
+  touching `SecurityConfig` itself for a cosmetic status-code preference.
+  (3) Fixed a real, previously-unvalidated gap unrelated to the above:
+  `EventService.createEvent`/`updateEvent` accepted any
+  startDate/endDate pair, including an end date before the start date.
+  Added a `BadRequestException` check, run before `updateEvent` mutates
+  the existing entity so a bad request can't partially clobber it first.
+  Test status: full suite green, 43 tests (`./mvnw test`, JDK 17 -
+  installed via `apt-get install openjdk-17-jdk` since only JDK 21 was
+  preinstalled here).
+  Next session should pick up: (a) still the standing recommendation -
+  a human merging even one or two of the twelve now-unmerged daily
+  branches would unblock a lot of redundant future work; this session's
+  CI workflow and security-handler fix both duplicate existing unmerged
+  work for exactly that reason. (b) If no merge has happened yet, avoid
+  re-adding controller-layer MockMvc tests for Auth/Event/Order (eight
+  branches already have a version) and re-adding refunds/admin
+  stats/notifications (each already has one version) - look instead for
+  gaps like the two found today (SecurityConfig integration coverage,
+  event date validation) that no branch has touched yet, e.g. ticket
+  type price/quantity validation, or pagination on `GET /api/events`.
+  (c) Don't retry `docker compose up --build` in this kind of sandbox -
+  it's blocked by network policy, not something a retry or workaround
+  fixes; it needs an environment whose egress policy allows Docker Hub,
+  or a registry mirror the policy does allow.
 - 2026-09-10, morning, `daily/2026-09-10`: Before picking up new work,
   noticed a systemic problem worth flagging: none of the eleven daily
   branches from 2026-08-29 through 2026-09-09 have been merged into
