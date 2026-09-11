@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/events")
@@ -53,14 +52,16 @@ public class EventController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<EventResponse>> searchEvents(
+    public ResponseEntity<Page<EventResponse>> searchEvents(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startFrom,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTo
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTo,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(eventService.searchEvents(keyword, category, location, startFrom, startTo));
+        return ResponseEntity.ok(eventService.searchEvents(keyword, category, location, startFrom, startTo, page, size));
     }
 
     @GetMapping("/{id}")

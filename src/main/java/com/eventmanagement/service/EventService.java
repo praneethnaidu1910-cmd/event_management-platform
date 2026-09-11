@@ -73,13 +73,7 @@ public class EventService {
     }
 
     public Page<EventResponse> getAllEvents(int page, int size) {
-        if (page < 0) {
-            throw new BadRequestException("page must not be negative");
-        }
-        if (size < 1 || size > MAX_PAGE_SIZE) {
-            throw new BadRequestException("size must be between 1 and " + MAX_PAGE_SIZE);
-        }
-        Pageable pageable = PageRequest.of(page, size, Sort.by("startDate").ascending());
+        Pageable pageable = pageableSortedByStartDate(page, size);
         return eventRepository.findByStatus(Event.EventStatus.PUBLISHED, pageable)
                 .map(this::toEventResponse);
     }
@@ -96,6 +90,32 @@ public class EventService {
                 ).stream()
                 .map(this::toEventResponse)
                 .collect(Collectors.toList());
+    }
+
+    public Page<EventResponse> searchEvents(String keyword, String category, String location,
+                                             LocalDateTime startFrom, LocalDateTime startTo,
+                                             int page, int size) {
+        Pageable pageable = pageableSortedByStartDate(page, size);
+        return eventRepository.search(
+                        Event.EventStatus.PUBLISHED,
+                        normalize(keyword),
+                        normalize(category),
+                        normalize(location),
+                        startFrom,
+                        startTo,
+                        pageable
+                )
+                .map(this::toEventResponse);
+    }
+
+    private Pageable pageableSortedByStartDate(int page, int size) {
+        if (page < 0) {
+            throw new BadRequestException("page must not be negative");
+        }
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new BadRequestException("size must be between 1 and " + MAX_PAGE_SIZE);
+        }
+        return PageRequest.of(page, size, Sort.by("startDate").ascending());
     }
 
     private String normalize(String value) {
