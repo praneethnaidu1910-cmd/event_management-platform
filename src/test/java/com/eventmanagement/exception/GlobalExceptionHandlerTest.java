@@ -5,8 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class GlobalExceptionHandlerTest {
 
@@ -55,6 +60,30 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(bodyMessage(response)).isEqualTo("Bad credentials");
+    }
+
+    @Test
+    void handlesMethodSecurityAccessDenied() {
+        ResponseEntity<?> response = handler.handleMethodSecurityAccessDenied(
+                new org.springframework.security.access.AccessDeniedException("Access is denied"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(bodyMessage(response)).isEqualTo("Access denied");
+    }
+
+    @Test
+    void handlesValidationErrorsWithFieldDetails() {
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "ticketTypeRequest");
+        bindingResult.addError(new FieldError("ticketTypeRequest", "price", "must be greater than 0"));
+        bindingResult.addError(new FieldError("ticketTypeRequest", "quantity", "must be greater than 0"));
+        MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
+        when(ex.getBindingResult()).thenReturn(bindingResult);
+
+        ResponseEntity<?> response = handler.handleValidation(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(bodyMessage(response)).isEqualTo(
+                "price: must be greater than 0, quantity: must be greater than 0");
     }
 
     @Test
