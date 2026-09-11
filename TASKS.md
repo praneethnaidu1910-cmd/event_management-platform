@@ -55,6 +55,67 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-11, evening, `daily/2026-09-11`: continued from this morning's
+  session on the same branch. Morning added pagination to
+  `GET /api/events` and flagged two follow-ups: the "@PreAuthorize/@Valid
+  500-instead-of-403/400" exception-handler gap, and that `GET
+  /api/events/search` still wasn't paginated.
+  Picked up the exception-handler gap first since it was the more
+  concrete of the two remaining items and, on inspection, confirmed real:
+  `TicketTypeRequest` already had `@NotNull`/`@Positive` on `price` and
+  `quantity` and `EventRequest` already cascaded `@Valid` into it, so a
+  negative price or zero quantity correctly failed validation - but
+  `GlobalExceptionHandler` had no handler for
+  `MethodArgumentNotValidException`, so the failure fell through to the
+  generic handler and came back as a 500 instead of a 400. Separately,
+  `@PreAuthorize` denials throw Spring Security's own
+  `org.springframework.security.access.AccessDeniedException`, a
+  different class from the app's own `AccessDeniedException` that was
+  already handled, so those were also landing as 500s instead of 403s.
+  Added a handler for each (400 with a per-field message for validation
+  errors, 403 for method-security denials) plus unit tests.
+  Second, paginated `GET /api/events/search` the same way `GET
+  /api/events` was paginated this morning: a paginated overload of the
+  `search` repository `@Query` (kept the unpaginated one too, since
+  nothing required removing it), a matching `EventService` overload, and
+  switched the controller to take `page`/`size` params (default 0/20)
+  returning a `Page<EventResponse>` envelope - the same deliberate
+  response-shape change as this morning's pagination work. Pulled the
+  page/size validation into a shared private helper on `EventService`
+  since both paginated methods now need it.
+  Third, made `mvnw` executable - flagged as safe and ready to land by
+  the last couple of morning logs.
+  Test status: full suite green, 42 tests (`./mvnw test`, JDK 17 -
+  had to install it again since only JDK 21 is preinstalled on this
+  sandbox too; this time `apt-get install openjdk-17-jdk` took under a
+  minute after an `apt-get update`, not the ~30 minutes this morning's
+  run saw, so that seems to have just been a slow mirror rather than
+  something to route around).
+  Next session should pick up: (a) the merge backlog - now fourteen
+  unmerged daily branches (`daily/2026-08-29` through today), none
+  merged into `main` yet. This remains the biggest drag on these
+  sessions: every run re-derives "what's already done" by grepping
+  branches instead of reading it off `main`. Confirmed today that admin
+  endpoints (`daily/2026-08-30`), controller-layer MockMvc tests for
+  Auth/Event/Order (`daily/2026-08-31` and several after), an email
+  notification service (`daily/2026-09-05`), and Dockerfile/compose/CI
+  (`daily/2026-09-10`) all already exist on unmerged branches - a human
+  merging even a few of these would let sessions build on each other
+  instead of re-deriving the same state analysis every time.
+  (b) Refunds/cancellations is now the only item left in the "missing
+  backend features" list that doesn't exist on any of the fourteen
+  branches - checked `OrderController`/`OrderService` on all of them.
+  It's a legitimate next item, but it touches the same
+  `TicketType.available` inventory counter that `OrderService
+  .purchaseTickets` guards with `findByIdForUpdate` + `SERIALIZABLE`
+  isolation to prevent overselling, so a cancellation path needs the
+  same locking discipline (lock the ticket type row before incrementing
+  `available` back) and concurrency tests, not just a happy-path
+  refund method - budget real time for that rather than picking it up
+  as a quick filler item.
+  (c) Organizer-scoped event listing (e.g. "my events" for the
+  logged-in organizer) still doesn't exist as an endpoint anywhere
+  in the backlog, unlike the two now-paginated public endpoints.
 - 2026-09-11, morning, `daily/2026-09-11`: `main` is still stuck at
   2026-08-28 - none of the daily branches from 2026-08-29 through
   2026-09-10 have been merged yet (twelve branches now), so this
