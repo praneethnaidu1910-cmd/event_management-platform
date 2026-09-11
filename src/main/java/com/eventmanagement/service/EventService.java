@@ -11,6 +11,10 @@ import com.eventmanagement.exception.AccessDeniedException;
 import com.eventmanagement.exception.BadRequestException;
 import com.eventmanagement.exception.ResourceNotFoundException;
 import com.eventmanagement.repository.EventRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -20,6 +24,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class EventService {
+
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final EventRepository eventRepository;
 
@@ -68,6 +74,12 @@ public class EventService {
                 .collect(Collectors.toList());
     }
 
+    public Page<EventResponse> getAllEvents(int page, int size) {
+        Pageable pageable = pageableSortedByStartDate(page, size);
+        return eventRepository.findByStatus(Event.EventStatus.PUBLISHED, pageable)
+                .map(this::toEventResponse);
+    }
+
     public List<EventResponse> getEventsForOrganizer(User organizer) {
         return eventRepository.findByOrganizerId(organizer.getId()).stream()
                 .map(this::toEventResponse)
@@ -86,6 +98,32 @@ public class EventService {
                 ).stream()
                 .map(this::toEventResponse)
                 .collect(Collectors.toList());
+    }
+
+    public Page<EventResponse> searchEvents(String keyword, String category, String location,
+                                             LocalDateTime startFrom, LocalDateTime startTo,
+                                             int page, int size) {
+        Pageable pageable = pageableSortedByStartDate(page, size);
+        return eventRepository.search(
+                        Event.EventStatus.PUBLISHED,
+                        normalize(keyword),
+                        normalize(category),
+                        normalize(location),
+                        startFrom,
+                        startTo,
+                        pageable
+                )
+                .map(this::toEventResponse);
+    }
+
+    private Pageable pageableSortedByStartDate(int page, int size) {
+        if (page < 0) {
+            throw new BadRequestException("page must not be negative");
+        }
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new BadRequestException("size must be between 1 and " + MAX_PAGE_SIZE);
+        }
+        return PageRequest.of(page, size, Sort.by("startDate").ascending());
     }
 
     private String normalize(String value) {

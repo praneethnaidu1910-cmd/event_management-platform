@@ -6,6 +6,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.context.TestPropertySource;
 
 import java.time.LocalDateTime;
@@ -87,5 +91,16 @@ class EventRepositorySearchTest {
                 LocalDateTime.of(2026, 10, 31, 23, 59));
 
         assertThat(results).extracting(Event::getTitle).containsExactly("Tech Conference");
+    }
+
+    @Test
+    void searchPaginated_sortsByStartDateAndReportsTotals() {
+        Pageable firstPage = PageRequest.of(0, 1, Sort.by("startDate").ascending());
+        Page<Event> page = eventRepository.search(
+                Event.EventStatus.PUBLISHED, null, null, null, null, null, firstPage);
+
+        assertThat(page.getTotalElements()).isEqualTo(2);
+        assertThat(page.getTotalPages()).isEqualTo(2);
+        assertThat(page.getContent()).extracting(Event::getTitle).containsExactly("Jazz Night");
     }
 }

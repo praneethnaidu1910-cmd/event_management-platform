@@ -11,6 +11,11 @@ import com.eventmanagement.exception.ResourceNotFoundException;
 import com.eventmanagement.repository.EventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -248,5 +253,92 @@ class EventServiceTest {
         eventService.searchEvents("   ", "", null, null, null);
 
         verify(eventRepository).search(Event.EventStatus.PUBLISHED, null, null, null, null, null);
+    }
+
+    @Test
+    void getAllEvents_returnsPagedPublishedEventsSortedByStartDate() {
+        Event event = Event.builder()
+                .id(7L)
+                .organizer(organizer(1L))
+                .title("Music Festival")
+                .location("City Park")
+                .status(Event.EventStatus.PUBLISHED)
+                .ticketTypes(List.of())
+                .build();
+        Pageable pageable = PageRequest.of(0, 20, Sort.by("startDate").ascending());
+        when(eventRepository.findByStatus(Event.EventStatus.PUBLISHED, pageable))
+                .thenReturn(new PageImpl<>(List.of(event), pageable, 1));
+
+        Page<EventResponse> result = eventService.getAllEvents(0, 20);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent()).extracting(EventResponse::getId).containsExactly(7L);
+    }
+
+    @Test
+    void getAllEvents_rejectsNegativePage() {
+        assertThatThrownBy(() -> eventService.getAllEvents(-1, 20))
+                .isInstanceOf(BadRequestException.class);
+
+        verify(eventRepository, never()).findByStatus(any(), any(Pageable.class));
+    }
+
+    @Test
+    void getAllEvents_rejectsSizeOutsideAllowedRange() {
+        assertThatThrownBy(() -> eventService.getAllEvents(0, 0))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> eventService.getAllEvents(0, 101))
+                .isInstanceOf(BadRequestException.class);
+
+        verify(eventRepository, never()).findByStatus(any(), any(Pageable.class));
+    }
+
+    @Test
+    void searchEvents_paginated_delegatesToRepositoryWithPageable() {
+        Event event = Event.builder()
+                .id(8L)
+                .organizer(organizer(1L))
+                .title("Jazz Night")
+                .location("Blue Note")
+                .status(Event.EventStatus.PUBLISHED)
+                .ticketTypes(List.of())
+                .build();
+        Pageable pageable = PageRequest.of(0, 20, Sort.by("startDate").ascending());
+        when(eventRepository.search(Event.EventStatus.PUBLISHED, "jazz", "Music", null, null, null, pageable))
+                .thenReturn(new PageImpl<>(List.of(event), pageable, 1));
+
+        Page<EventResponse> result = eventService.searchEvents("jazz", "Music", null, null, null, 0, 20);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent()).extracting(EventResponse::getId).containsExactly(8L);
+    }
+
+    @Test
+    void searchEvents_paginated_normalizesBlankFiltersToNull() {
+        Pageable pageable = PageRequest.of(0, 20, Sort.by("startDate").ascending());
+        when(eventRepository.search(eq(Event.EventStatus.PUBLISHED), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        eventService.searchEvents("   ", "", null, null, null, 0, 20);
+
+        verify(eventRepository).search(Event.EventStatus.PUBLISHED, null, null, null, null, null, pageable);
+    }
+
+    @Test
+    void searchEvents_paginated_rejectsNegativePage() {
+        assertThatThrownBy(() -> eventService.searchEvents(null, null, null, null, null, -1, 20))
+                .isInstanceOf(BadRequestException.class);
+
+        verify(eventRepository, never()).search(any(), any(), any(), any(), any(), any(), any(Pageable.class));
+    }
+
+    @Test
+    void searchEvents_paginated_rejectsSizeOutsideAllowedRange() {
+        assertThatThrownBy(() -> eventService.searchEvents(null, null, null, null, null, 0, 0))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> eventService.searchEvents(null, null, null, null, null, 0, 101))
+                .isInstanceOf(BadRequestException.class);
+
+        verify(eventRepository, never()).search(any(), any(), any(), any(), any(), any(), any(Pageable.class));
     }
 }

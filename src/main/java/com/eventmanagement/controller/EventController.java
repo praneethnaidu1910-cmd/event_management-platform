@@ -6,6 +6,7 @@ import com.eventmanagement.entity.User;
 import com.eventmanagement.service.CurrentUserService;
 import com.eventmanagement.service.EventService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,8 +45,11 @@ public class EventController {
     }
 
     @GetMapping
-    public ResponseEntity<List<EventResponse>> listEvents() {
-        return ResponseEntity.ok(eventService.getAllEvents());
+    public ResponseEntity<Page<EventResponse>> listEvents(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(eventService.getAllEvents(page, size));
     }
 
     @GetMapping("/mine")
@@ -56,14 +60,16 @@ public class EventController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<EventResponse>> searchEvents(
+    public ResponseEntity<Page<EventResponse>> searchEvents(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startFrom,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTo
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTo,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(eventService.searchEvents(keyword, category, location, startFrom, startTo));
+        return ResponseEntity.ok(eventService.searchEvents(keyword, category, location, startFrom, startTo, page, size));
     }
 
     @GetMapping("/{id}")
