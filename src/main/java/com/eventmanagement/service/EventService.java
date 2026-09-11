@@ -8,8 +8,13 @@ import com.eventmanagement.entity.Event;
 import com.eventmanagement.entity.TicketType;
 import com.eventmanagement.entity.User;
 import com.eventmanagement.exception.AccessDeniedException;
+import com.eventmanagement.exception.BadRequestException;
 import com.eventmanagement.exception.ResourceNotFoundException;
 import com.eventmanagement.repository.EventRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -19,6 +24,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class EventService {
+
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final EventRepository eventRepository;
 
@@ -63,6 +70,18 @@ public class EventService {
         return eventRepository.findByStatus(Event.EventStatus.PUBLISHED).stream()
                 .map(this::toEventResponse)
                 .collect(Collectors.toList());
+    }
+
+    public Page<EventResponse> getAllEvents(int page, int size) {
+        if (page < 0) {
+            throw new BadRequestException("page must not be negative");
+        }
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new BadRequestException("size must be between 1 and " + MAX_PAGE_SIZE);
+        }
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startDate").ascending());
+        return eventRepository.findByStatus(Event.EventStatus.PUBLISHED, pageable)
+                .map(this::toEventResponse);
     }
 
     public List<EventResponse> searchEvents(String keyword, String category, String location,

@@ -6,6 +6,7 @@ import com.eventmanagement.entity.User;
 import com.eventmanagement.service.CurrentUserService;
 import com.eventmanagement.service.EventService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,8 +45,11 @@ public class EventController {
     }
 
     @GetMapping
-    public ResponseEntity<List<EventResponse>> listEvents() {
-        return ResponseEntity.ok(eventService.getAllEvents());
+    public ResponseEntity<Page<EventResponse>> listEvents(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(eventService.getAllEvents(page, size));
     }
 
     @GetMapping("/search")
