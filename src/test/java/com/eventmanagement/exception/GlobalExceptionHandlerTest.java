@@ -50,6 +50,15 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handlesSpringSecurityAccessDenied() {
+        ResponseEntity<?> response = handler.handleSpringAccessDenied(
+                new org.springframework.security.access.AccessDeniedException("Access is denied"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(bodyMessage(response)).isEqualTo("Access denied");
+    }
+
+    @Test
     void handlesAuthenticationFailure() {
         ResponseEntity<?> response = handler.handleAuthentication(new BadCredentialsException("Bad credentials"));
 
