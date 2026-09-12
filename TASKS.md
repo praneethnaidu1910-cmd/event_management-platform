@@ -55,4 +55,18 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-12 morning (`daily/2026-09-12`): Added MockMvc controller tests for
+  EventController (CRUD, search, and @PreAuthorize role checks for
+  ORGANIZER-only endpoints) - the only controller with zero tests above the
+  service layer. Uses @SpringBootTest + an embedded H2 database rather than
+  @WebMvcTest, since the slice test doesn't load SecurityConfig's method
+  security and would silently skip the @PreAuthorize checks. Writing these
+  tests surfaced a real bug: GlobalExceptionHandler only caught our own
+  AccessDeniedException, not Spring Security's (thrown by @PreAuthorize
+  rejections), so every role-check failure was returning 500 instead of
+  403. Fixed with a dedicated handler, plus a unit test for it. Added
+  spring-security-test as a test dependency for @WithMockUser. Full suite:
+  44 tests, all passing (`./mvnw test`). Next: AuthController and
+  OrderController still have no controller-level tests (only service-level
+  coverage) - AuthController would need care since it's auth-adjacent, but
+  is a pure test addition, no production code changes required there.
