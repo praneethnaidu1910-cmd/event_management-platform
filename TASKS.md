@@ -55,6 +55,24 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-12 evening (`daily/2026-09-12`): Picked up where the morning
+  session left off - added MockMvc controller tests for AuthController
+  (register/login, both the success and failure paths: duplicate email,
+  bad credentials) and OrderController (purchase, including the
+  ATTENDEE-only @PreAuthorize check and the InsufficientTickets/
+  ResourceNotFound error mappings). No production code changes; both
+  controllers were pure test additions as the morning log suggested,
+  so nothing auth-adjacent was touched beyond writing tests against the
+  existing behavior. Full suite: 53 tests, all passing (`./mvnw test`).
+  That closes out every controller in the app - EventController,
+  AuthController, and OrderController all now have both service- and
+  controller-level coverage. Next: with backend test coverage now
+  reasonably complete across auth, events, and orders, tomorrow morning
+  is a good point to start on roadmap item 2 (missing backend features -
+  refunds/cancellations, admin endpoints, or email notification on
+  purchase) or item 3 (Dockerize + GitHub Actions CI to actually run
+  this test suite automatically). Recommend CI first since it's lower
+  risk than adding new transactional logic and pays off immediately.
 - 2026-09-12 morning (`daily/2026-09-12`): Added MockMvc controller tests for
   EventController (CRUD, search, and @PreAuthorize role checks for
   ORGANIZER-only endpoints) - the only controller with zero tests above the
