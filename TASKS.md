@@ -55,4 +55,28 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-13 morning (`daily/2026-09-13`): main hasn't absorbed any of the
+  daily branches since 2026-08-28 (no PRs merged yet), so this branch
+  starts from the same base those branches did and doesn't have their
+  work (controller tests, the search endpoint's follow-up fixes, etc.) -
+  worth keeping in mind when reviewing, since some of this may overlap
+  with unmerged commits on earlier daily/* branches. Added MockMvc
+  controller tests for EventController (CRUD, search, and the
+  @PreAuthorize role checks on the organizer-only endpoints) using
+  @SpringBootTest + an embedded H2 database rather than @WebMvcTest,
+  since the slice test skips SecurityConfig's method security and would
+  silently let @PreAuthorize checks pass regardless of role. Writing
+  those tests surfaced two real bugs in GlobalExceptionHandler: it only
+  caught our own AccessDeniedException, not Spring Security's (thrown by
+  @PreAuthorize rejections), and it had no handler for
+  MethodArgumentNotValidException (thrown by @Valid failures) - both
+  were falling through to the generic handler and returning 500 instead
+  of 403/400. Fixed both with dedicated handlers and unit tests. Full
+  suite: 47 tests, all passing (`./mvnw test`). Next: AuthController and
+  OrderController still have no controller-level tests (only
+  service-level coverage) - AuthController needs care since it's
+  auth-adjacent, but adding tests against existing behavior shouldn't
+  require touching its production code. Once those two are covered,
+  every controller in the app has controller-level tests and roadmap
+  item 3 (Dockerize + GitHub Actions CI to run this suite automatically)
+  becomes a good next step.
