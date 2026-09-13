@@ -55,6 +55,23 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-13 evening (`daily/2026-09-13`): picked up where this morning's
+  run left off. Added MockMvc controller tests for AuthController (register
+  duplicate-email and login bad-credentials mapping to 400/401, plus bean
+  validation rejecting blank/malformed input before the service is called)
+  and OrderController (the purchase endpoint's @PreAuthorize("hasRole('ATTENDEE')")
+  check, InsufficientTicketsException/ResourceNotFoundException mapping to
+  400/404, and request validation) - same @SpringBootTest setup as
+  EventControllerTest, for the same reason: a @WebMvcTest slice doesn't
+  enforce method security so the role check would silently pass regardless
+  of role. With today's two sessions combined, every controller in the app
+  (Auth, Event, Order) now has controller-level tests, not just
+  service-level coverage. Full suite: 61 tests, all passing (`./mvnw test`).
+  Next: roadmap item 3 - Dockerize the app and add GitHub Actions CI to run
+  this suite automatically on push/PR. That's a good-sized, self-contained
+  piece of work for a fresh session (Dockerfile, docker-compose for the DB,
+  a workflow file) rather than something to squeeze in at the end of this
+  one.
 - 2026-09-13 morning (`daily/2026-09-13`): main hasn't absorbed any of the
   daily branches since 2026-08-28 (no PRs merged yet), so this branch
   starts from the same base those branches did and doesn't have their
