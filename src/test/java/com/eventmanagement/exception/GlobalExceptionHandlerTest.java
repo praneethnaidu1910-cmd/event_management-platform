@@ -2,9 +2,13 @@ package com.eventmanagement.exception;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -47,6 +51,32 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(bodyMessage(response)).isEqualTo("Not the event organizer");
+    }
+
+    @Test
+    void handlesSpringSecurityAccessDenied() {
+        ResponseEntity<?> response = handler.handleSpringAccessDenied(
+                new org.springframework.security.access.AccessDeniedException("Access is denied"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(bodyMessage(response)).isEqualTo("Access denied");
+    }
+
+    @Test
+    void handlesBeanValidationErrors() throws NoSuchMethodException {
+        BindException bindingResult = new BindException(new Object(), "eventRequest");
+        bindingResult.addError(new FieldError("eventRequest", "title", "must not be blank"));
+        MethodParameter methodParameter = new MethodParameter(
+                GlobalExceptionHandlerTest.class.getDeclaredMethod("dummyTarget", Object.class), 0);
+
+        ResponseEntity<?> response = handler.handleValidation(
+                new MethodArgumentNotValidException(methodParameter, bindingResult));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(bodyMessage(response)).isEqualTo("title: must not be blank");
+    }
+
+    private void dummyTarget(Object arg) {
     }
 
     @Test
