@@ -195,4 +195,47 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.cancelOrder(404L, buyer))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
+
+    @Test
+    void getOrdersForUser_returnsOnlyThatUsersOrdersNewestFirst() {
+        TicketType ticketType = ticketType(5, "25.00");
+        ticketType.getEvent().setTitle("Concert Night");
+        User buyer = User.builder().id(5L).email("buyer@example.com").role(User.Role.ATTENDEE).build();
+        Order order = orderWithTickets(buyer, ticketType, 2, "COMPLETED");
+        when(orderRepository.findByUserIdOrderByCreatedAtDesc(5L)).thenReturn(List.of(order));
+
+        List<OrderResponse> responses = orderService.getOrdersForUser(buyer);
+
+        assertThat(responses).hasSize(1);
+        OrderResponse response = responses.get(0);
+        assertThat(response.getOrderId()).isEqualTo(50L);
+        assertThat(response.getEventId()).isEqualTo(10L);
+        assertThat(response.getEventTitle()).isEqualTo("Concert Night");
+        assertThat(response.getPaymentStatus()).isEqualTo("COMPLETED");
+        assertThat(response.getCreatedAt()).isNotNull();
+        assertThat(response.getTickets()).hasSize(2);
+    }
+
+    @Test
+    void getOrdersForUser_returnsEmptyListWhenUserHasNoOrders() {
+        User buyer = User.builder().id(5L).email("buyer@example.com").role(User.Role.ATTENDEE).build();
+        when(orderRepository.findByUserIdOrderByCreatedAtDesc(5L)).thenReturn(List.of());
+
+        assertThat(orderService.getOrdersForUser(buyer)).isEmpty();
+    }
+
+    @Test
+    void getAllOrders_returnsOrdersAcrossAllUsers() {
+        TicketType ticketType = ticketType(5, "25.00");
+        User buyer = User.builder().id(5L).email("buyer@example.com").role(User.Role.ATTENDEE).build();
+        User otherBuyer = User.builder().id(6L).email("other@example.com").role(User.Role.ATTENDEE).build();
+        Order order1 = orderWithTickets(buyer, ticketType, 1, "COMPLETED");
+        Order order2 = orderWithTickets(otherBuyer, ticketType, 1, "COMPLETED");
+        when(orderRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(order2, order1));
+
+        List<OrderResponse> responses = orderService.getAllOrders();
+
+        assertThat(responses).hasSize(2);
+        assertThat(responses).allSatisfy(response -> assertThat(response.getTickets()).hasSize(1));
+    }
 }
