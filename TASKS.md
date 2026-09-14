@@ -55,4 +55,15 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-14, morning, `daily/2026-09-14`: Added order cancellation
+  (`OrderService.cancelOrder`, `POST /api/orders/{id}/cancel`). Restores the
+  ticket type's available count under the same pessimistic-lock read the
+  purchase flow uses, marks the order and its tickets CANCELLED, and is
+  restricted to the order's owner or an ADMIN. Added 5 new OrderServiceTest
+  cases (happy path, admin override, non-owner rejection, already-cancelled
+  rejection, order-not-found). Full suite: 37/37 passing. Next: this only
+  covers whole-order cancellation - partial/per-ticket refunds within an
+  order are still unhandled, and there's no refund/payment-reversal step
+  since payment is just a status flag. Otherwise still open on the roadmap:
+  remaining item-2 backend features (admin endpoints, email notification on
+  purchase), then CI/Docker/deployment.
