@@ -55,6 +55,19 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-14, evening, `daily/2026-09-14`: Added order history endpoints -
+  `GET /api/orders/me` (any authenticated user, their own orders) and
+  `GET /api/orders` (ADMIN-only, all orders) - closing part of the
+  item-2 "admin endpoints" gap. `OrderResponse` now carries eventId,
+  eventTitle, paymentStatus, and createdAt so a listing is useful without
+  a follow-up call per order; `OrderRepository` gained
+  `findByUserIdOrderByCreatedAtDesc`/`findAllByOrderByCreatedAtDesc`
+  (replacing the unused `findByUserId`). Added 3 new OrderServiceTest
+  cases for the two new read paths. Full suite: 40/40 passing. Combined
+  with this morning: order cancellation plus now order history/admin
+  listing are both in. Next: email notification on purchase is still
+  open from item 2, then CI/Docker/deployment (item 3). Per-ticket
+  partial refunds within an order remain out of scope for now.
 - 2026-09-14, morning, `daily/2026-09-14`: Added order cancellation
   (`OrderService.cancelOrder`, `POST /api/orders/{id}/cancel`). Restores the
   ticket type's available count under the same pessimistic-lock read the
