@@ -96,6 +96,18 @@ public class OrderService {
         return toOrderResponse(saved);
     }
 
+    public List<OrderResponse> getOrdersForUser(User user) {
+        return orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream()
+                .map(this::toOrderResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<OrderResponse> getAllOrders() {
+        return orderRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(this::toOrderResponse)
+                .collect(Collectors.toList());
+    }
+
     private OrderResponse toOrderResponse(Order order) {
         List<TicketResponse> tickets = order.getTickets().stream()
                 .map(ticket -> TicketResponse.builder()
@@ -108,7 +120,11 @@ public class OrderService {
 
         return OrderResponse.builder()
                 .orderId(order.getId())
+                .eventId(order.getEvent().getId())
+                .eventTitle(order.getEvent().getTitle())
                 .totalAmount(order.getTotalAmount())
+                .paymentStatus(order.getPaymentStatus())
+                .createdAt(order.getCreatedAt())
                 .tickets(tickets)
                 .build();
     }
