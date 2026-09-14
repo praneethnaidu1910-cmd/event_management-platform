@@ -84,7 +84,8 @@ public class OrderService {
         Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
-        if (!order.getUser().getId().equals(user.getId())) {
+        boolean isOwner = order.getUser().getId().equals(user.getId());
+        if (!isOwner && user.getRole() != User.Role.ADMIN) {
             throw new AccessDeniedException("You do not have access to this order");
         }
 

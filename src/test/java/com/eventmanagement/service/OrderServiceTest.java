@@ -134,6 +134,20 @@ class OrderServiceTest {
     }
 
     @Test
+    void cancelOrder_adminCanCancelOnBehalfOfAnotherUser() {
+        User buyer = User.builder().id(5L).email("buyer@example.com").role(User.Role.ATTENDEE).build();
+        User admin = User.builder().id(99L).email("admin@example.com").role(User.Role.ADMIN).build();
+        TicketType ticketType = ticketType(7, "25.00");
+        Order order = activeOrder(buyer, ticketType, 1, LocalDateTime.now().plusDays(10));
+        when(orderRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(order));
+        when(ticketTypeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(ticketType));
+
+        OrderResponse response = orderService.cancelOrder(100L, admin);
+
+        assertThat(response.getPaymentStatus()).isEqualTo("REFUNDED");
+    }
+
+    @Test
     void cancelOrder_rejectsNonOwnerNonAdmin() {
         User buyer = User.builder().id(5L).email("buyer@example.com").role(User.Role.ATTENDEE).build();
         User otherUser = User.builder().id(6L).email("other@example.com").role(User.Role.ATTENDEE).build();
