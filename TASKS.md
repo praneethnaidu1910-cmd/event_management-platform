@@ -55,4 +55,43 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-15, morning, `daily/2026-09-15`: No code changes this session -
+  found a structural problem with the automation setup that needs a human
+  decision before more code should be added. `main` is still at 9e087d1
+  (2026-08-28) - none of the 17 `daily/*` branches since then
+  (2026-08-29 through 2026-09-14) have been merged, and per this file's own
+  instructions each morning run branches fresh off `main`, not off the
+  previous day's branch. The result: 18 days of twice-daily sessions have
+  been re-solving the same handful of problems independently, over and
+  over, on branches that don't know about each other:
+  - Mapping Spring Security's `AccessDeniedException`/validation errors to
+    403/400 instead of a raw 500 - done on at least 8 separate branches
+    (08-31, 09-01, 09-03, 09-04, 09-06, 09-07, 09-08, 09-09, 09-11, 09-12).
+  - MockMvc controller-layer tests for Auth/Event/OrderController - done
+    independently on at least 9 branches (08-31, 09-01, 09-03, 09-04,
+    09-06, 09-07, 09-08, 09-09, 09-12, 09-13).
+  - Order cancellation - implemented 3 separate times (08-30, 09-02, 09-14).
+  - A GitHub Actions CI workflow - added twice (09-05, 09-10).
+  - Purchase confirmation email - done once (09-05) but the roadmap section
+    above still lists it as open, because that knowledge never made it
+    back to `main`.
+  - Dockerfile/docker-compose (09-10), event/search pagination (09-11), and
+    a couple of concurrency fixes to the ticket-purchase path (09-03,
+    09-05, 09-08) each exist on exactly one branch and would be lost if
+    that branch is never looked at.
+  The 2026-09-13 morning session noticed and noted the staleness problem
+  in its own log entry, but since that note only lived on `daily/2026-09-13`
+  (never merged), it didn't reach `main` or change what later sessions saw,
+  and two more branches (09-13 evening, 09-14 morning/evening) were added
+  on top of stale `main` anyway.
+  I did not add another branch's worth of duplicate work on top of this.
+  What's needed is a human decision: pick a base (my read is that
+  `daily/2026-09-14` is the most feature-complete single branch - it's the
+  only one with order cancellation *and* order history/admin listing - but
+  useful work such as pagination, CI, Docker, and the concurrency fixes
+  live only on other branches and would need to be cherry-picked in), open
+  a PR against `main`, merge it, and then either delete or archive the
+  remaining stale `daily/*` branches so they stop showing up as candidates
+  to build on. Once `main` reflects real progress, automated sessions
+  should go back to branching off it normally. No tests were run since no
+  production code changed.
