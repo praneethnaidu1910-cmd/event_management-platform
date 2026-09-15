@@ -55,6 +55,23 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-15, evening, `daily/2026-09-15`: Checked in on the morning
+  session's finding before writing any code. Verified independently:
+  `origin/main` is still at 9e087d1 (2026-08-28), no PR is open against it,
+  and this branch carries nothing but the morning's note on top of `main`.
+  The blocker is unchanged and still needs the human decision described
+  below (pick a base branch - `daily/2026-09-14` looks like the strongest
+  candidate per the morning entry - cherry-pick the pagination/CI/Docker/
+  concurrency work that lives only on other branches, open a PR by hand,
+  merge it, then archive the stale `daily/*` branches). Writing more
+  feature code on top of stale `main` right now would only produce a 19th
+  branch with its own copy of the same fixes, so this session made no code
+  changes and pushed only this log entry. Tomorrow morning: check whether
+  `main` has moved: if the consolidation PR has merged, branch off the new
+  `main` and resume the roadmap normally (refunds/cancellations, admin
+  endpoints, purchase email are the next unclaimed items per the roadmap
+  above); if `main` is still stale, repeat this check rather than adding a
+  20th branch.
 - 2026-09-15, morning, `daily/2026-09-15`: No code changes this session -
   found a structural problem with the automation setup that needs a human
   decision before more code should be added. `main` is still at 9e087d1
