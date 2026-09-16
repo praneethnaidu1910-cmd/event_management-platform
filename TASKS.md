@@ -55,4 +55,17 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-16, morning, `daily/2026-09-16`: Added MockMvc web-layer tests for
+  EventController (13 tests) covering routing, `@PreAuthorize` role checks,
+  validation, and the public GET endpoints - the CRUD endpoints previously
+  only had service-layer coverage. Writing these against the real
+  SecurityConfig (via @Import) surfaced two real bugs, fixed alongside the
+  tests: GlobalExceptionHandler's catch-all was swallowing Spring Security's
+  AccessDeniedException (role-mismatch on a `@PreAuthorize` check returned
+  500 instead of 403) and MethodArgumentNotValidException (a failed `@Valid`
+  check returned 500 instead of 400). Added spring-security-test as a test
+  dependency to support this. Full suite: 47/47 passing (`./mvnw test`).
+  Next: AuthController and OrderController still have no web-layer tests -
+  OrderController's purchase endpoint is the highest-value target given the
+  concurrency risk in that path. Treat it carefully per the roadmap's auth
+  caution note.
