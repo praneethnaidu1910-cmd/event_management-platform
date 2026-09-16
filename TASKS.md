@@ -55,6 +55,24 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
+- 2026-09-16, evening, `daily/2026-09-16`: Added MockMvc web-layer tests for
+  AuthController (9 tests: register/login happy paths, duplicate-email
+  rejection, validation failures, bad credentials, missing user record
+  after auth) and OrderController's purchase endpoint (7 tests: ATTENDEE-only
+  `@PreAuthorize`, validation on the request body, and the
+  InsufficientTicketsException/ResourceNotFoundException -> 400/404 mapping).
+  Both are routing/status-code tests against the real SecurityConfig, same
+  pattern as this morning's EventControllerTest - no changes to AuthService,
+  OrderService, or any security code itself. Full suite: 63/63 passing
+  (`./mvnw test`). Combined with this morning: EventController, AuthController,
+  and OrderController web-layer tests are now all in place. Next: the
+  remaining test-coverage gaps are GraphQL error-path tests (only the happy
+  path and NOT_FOUND case are covered in EventGraphQlControllerTest) and an
+  integration-style test that exercises the purchase flow against a real
+  H2 database with concurrent requests to prove the SERIALIZABLE isolation
+  actually prevents overselling - the current OrderServiceTest coverage is
+  mocked-repository only. After that, the roadmap's step 2 (refunds/cancellations,
+  admin endpoints, email notifications) is open.
 - 2026-09-16, morning, `daily/2026-09-16`: Added MockMvc web-layer tests for
   EventController (13 tests) covering routing, `@PreAuthorize` role checks,
   validation, and the public GET endpoints - the CRUD endpoints previously
