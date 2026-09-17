@@ -55,4 +55,11 @@ Each run appends an entry below before pushing, so the next run (and the
 human reviewing later) knows what happened and what's next. Newest first.
 
 ### Log
-(none yet - first automated run adds its entry here)
+- 2026-09-17, morning, `daily/2026-09-17`: added order cancellation
+  (`POST /api/orders/{id}/cancel`) - restores ticket type availability
+  under the same pessimistic-lock/serializable pattern purchaseTickets
+  uses, marks the order and its tickets CANCELLED, rejects a non-owner
+  or a double-cancel. Added 4 new OrderServiceTest cases. Full suite
+  (36 tests) passes. Next up: refunds (payment-status/receipt side of
+  cancellation, since this only handles inventory/ticket state) or admin
+  endpoints, per the roadmap's "missing backend features" item.
