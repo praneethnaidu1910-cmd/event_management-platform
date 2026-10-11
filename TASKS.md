@@ -9,50 +9,79 @@
   reviewed before it merges.
 
 ## Scope roadmap (in order)
-1. **Tests** — no coverage exists yet. Start with auth (register/login),
-   event CRUD, and the order/ticket purchase flow, since that's the one with
-   concurrency risk (overselling tickets).
-2. **Missing backend features** — refunds/cancellations, admin endpoints,
-   email notification on purchase. (Event search & filtering done, 2026-08-28.)
-3. **Deployment/DevOps** — Dockerize the app, add GitHub Actions CI (build +
-   run the test suite from step 1), deploy somewhere reachable.
-4. **Frontend** — optional/last. A thin client to demo the API end-to-end.
-   Lower priority than hardening the backend itself.
+1. **Tests** — done. Unit coverage across auth, events, orders, admin,
+   GraphQL, plus MockMvc controller tests and an end-to-end SecurityConfig
+   test. 106 tests passing as of 2026-10-10.
+2. **Missing backend features** — done. Event search & filtering, order
+   cancellation with inventory refund, order history, admin endpoints,
+   email notification on purchase, pagination.
+3. **Deployment/DevOps** — Dockerfile + docker-compose added 2026-10-10, not
+   yet run end-to-end against a live Docker daemon (none available in the
+   sessions that built or merged it - only `docker compose config` and a
+   `mvnw package` were verified). GitHub Actions CI added. Still not
+   deployed anywhere reachable.
+4. **Frontend** — not started. Optional/lowest priority.
 
-Rationale: features 2-4 all build on code that currently has zero test
-coverage, including the transactional logic that prevents overselling
-tickets. Locking down tests first means later changes have something to
-break against instead of failing silently in production.
-
-## Current state (as of 2026-08-26)
+## Current state (as of 2026-10-10)
 - Auth: register/login with JWT, roles ATTENDEE/ORGANIZER/ADMIN.
-- Events: organizer CRUD, public browse of published events.
-- Orders/Tickets: purchase flow with transactional inventory checks.
-- Tests: unit coverage for JwtTokenProvider, JwtAuthenticationFilter,
-  AuthService, EventService, OrderService (19 tests, merged in PR #1).
-- GraphQL: a query layer over the events read path (events/event(id)),
-  merged in PR #2.
-- Tests: unit coverage for GlobalExceptionHandler (6 tests), and an event
-  search endpoint (keyword/category/location/date filters) with both a
-  mocked-repository unit test and a real H2-backed query test.
-- No CI, no frontend, no deployment yet.
-- 2026-08-28: repo moved from a fork of yashaswini-tdr/event_management-platform
-  into praneethnaidu1910-cmd's own account, so the automated sessions have
-  admin-level push access (the prior setup hit a 403 - the Claude GitHub App
-  wasn't authorized on someone else's repo). Two automated runs that day got
-  stuck in ephemeral sandboxes and never reached GitHub before this move -
-  that work (GlobalExceptionHandler tests, and the event search endpoint)
-  was redone from scratch afterward, not recovered from the stranded
-  sessions, since only truncated summaries of what they did were available.
+- Events: organizer CRUD, public browse (paginated), search (keyword/
+  category/location/date range, paginated), organizer's own event list,
+  end-date-after-start-date validation.
+- Orders/Tickets: purchase flow with transactional inventory checks (plain
+  `@Transactional`, not `SERIALIZABLE` - redundant on top of the row lock
+  and caused spurious failures under real concurrent load, confirmed by a
+  dedicated concurrency test). Cancellation with inventory refund, blocked
+  once the event has started, owner-or-admin. Order history for the buyer
+  and for an event's organizer. Purchase confirmation email (best-effort,
+  swallows mail failures).
+- Admin: order listing and platform stats (user/event/order counts, active
+  tickets sold, revenue).
+- GraphQL: a query layer over the events read path (events/event(id)).
+- GlobalExceptionHandler: maps Spring Security's AccessDeniedException and
+  bean validation failures to 403/400 instead of a generic 500 - this bug
+  got independently rediscovered and refixed close to a dozen times across
+  the unmerged daily branches (see below), which is exactly the kind of
+  wasted effort letting `main` go stale causes.
+- CI: GitHub Actions runs the test suite + jar build on push/PR.
+- Docker: Dockerfile + docker-compose for local dev, not yet run end-to-end.
+- No frontend, no live deployment yet.
 
-## Automated sessions (9 AM / 7 PM daily)
-Unattended cloud sessions work on a shared branch per day: `daily/YYYY-MM-DD`,
-created off `main` by the morning run, continued by the evening run. They
-push that branch to origin but never touch `main` and never open a PR -
-praneethnaidu1910-cmd reviews the diff and opens the PR by hand.
+## Automated sessions (9 AM / 7 PM daily) - currently PAUSED
+**2026-10-10: found and fixed a real design flaw.** Each daily session
+branched off `origin/main` fresh, per its instructions - but since nothing
+ever merged those branches back into `main`, every single day from
+2026-08-29 through 2026-09-17 branched from the *same* stale point and had
+no visibility into any other day's work. Result: 20 unmerged branches, heavy
+duplication (order cancellation implemented independently 4 times, the
+AccessDeniedException/validation 500 bug "fixed" ~12 times, controller
+MockMvc tests redone ~10 times), and real risk of conflicting changes.
+One session (09-15) even noticed the backlog itself and flagged it instead
+of adding more duplicate work - but that note lived on its own unmerged
+branch, so the next day's session never saw it either, and went back to
+duplicating work on 09-16/09-17.
 
-Each run appends an entry below before pushing, so the next run (and the
-human reviewing later) knows what happened and what's next. Newest first.
+Also unexplained: the routines kept firing (per their own `next_run_at`)
+through early October, but no run after 2026-09-17 morning produced a
+session or a branch. Not yet investigated.
+
+Resolved by reviewing all 20 branches, picking (or hand-merging, where two
+branches each had something the other lacked) the best version of each
+duplicated feature, and merging the result directly into `main` as 14
+focused commits - see git log from 2026-10-10. All 20 daily branches and
+the two long-merged feature branches (`fix/jwt-parser-api-compile-error`,
+`feature/graphql-events-query`) are now safe to delete; nothing on them
+isn't already on `main` in equivalent or better form.
+
+**Before re-enabling the routines**, fix the root cause: a session should
+either branch off the latest *unmerged* daily branch when one exists
+instead of always off `main`, or (simpler) a human should merge/delete the
+previous day's branch before the next session runs, so `main` never goes
+more than a day stale. Whichever approach, re-pause-and-reconsider if a
+human isn't reliably keeping `main` current - the automation makes the
+duplication problem worse, not better, when nothing merges.
 
 ### Log
-(none yet - first automated run adds its entry here)
+(cleared 2026-10-10 after the consolidation above - entries before this
+point lived on the now-superseded daily branches and aren't reproduced
+here verbatim; the summary above covers what mattered. Next automated
+session starts the log fresh.)
